@@ -1,0 +1,12 @@
+# =============================================================================
+# 360CRD - Docker Compose Override (Development)
+# Automatically merged with docker-compose.yml by Docker Compose.
+# Swaps nginx to HTTP-only dev config — no SSL certs required.
+# Access the API at http://localhost or directly at http://localhost:3000
+# =============================================================================
+
+services:
+  nginx:
+    volumes:
+      - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npx dotenv *)",
+      "Bash(set DATABASE_URL=postgresql://postgres:bholi420@localhost:5432/service-echs)",
+      "PowerShell(cd \"d:\\\\offc-projects\\\\crd360\\\\backend\\\\packages\\\\database\"; $env:DATABASE_URL = \"postgresql://postgres:bholi420@localhost:5432/service-echs\"; npx prisma migrate dev --name init 2>&1)",
+      "PowerShell(cd \"d:\\\\offc-projects\\\\crd360\\\\backend\\\\packages\\\\database\"; $env:DATABASE_URL = \"postgresql://postgres:bholi420@localhost:5432/service-echs\"; npx tsx prisma/seed.ts 2>&1)",
+      "PowerShell(Start-Sleep -Seconds 8; try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/health\" -TimeoutSec 5; $r.Content } catch { $_.Exception.Message })",
+      "PowerShell($conns = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue; if \\($conns\\) { $conns | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; Write-Output \"PID $\\($_.OwningProcess\\) - $\\($p.Name\\)\" } } else { Write-Output \"Nothing on port 3000\" })",
+      "PowerShell(Stop-Process -Id 25532 -Force)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Output \"Done\")",
+      "Bash(Get-ChildItem \"d:\\\\offc-projects\\\\crd360\\\\frontend\\\\src\" -File)",
+      "Bash(dotenv -e .env -- npx prisma db seed)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\({ path: '../../.env' }\\); process.env.DATABASE_URL && console.log\\('DB:', process.env.DATABASE_URL.substring\\(0,40\\)\\)\")",
+      "PowerShell($env:DATABASE_URL = \"postgresql://postgres:bholi420@localhost:5432/service-echs\"; cd d:\\\\offc-projects\\\\crd360\\\\backend\\\\packages\\\\database; npx tsx prisma/seed.ts 2>&1)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/auth/login -H 'Content-Type: application/json' -H 'X-Tenant-Slug: demo-corp' -d '{\"email\":\"admin@demo-corp.com\",\"password\":\"Demo@360!\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(npx tsc *)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill -9)",
+      "Bash(fuser -k 3000/tcp)",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Read(//d/offc-projects/**)"
+    ]
+  }
+}
