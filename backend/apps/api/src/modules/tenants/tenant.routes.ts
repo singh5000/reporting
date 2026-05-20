@@ -132,6 +132,43 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     return reply.send({ success: true, data: { ...smtp, password: "***" } });
   });
 
+  // ── Tenant Config ─────────────────────────────────────────────────────────
+  fastify.put("/me/config", { preHandler: [requireTenantAdmin()] }, async (req, reply) => {
+    const UpdateConfigDto = z.object({
+      mfaRequired: z.boolean().optional(),
+      sessionTimeoutMins: z.number().min(5).max(1440).optional(),
+      maxLoginAttempts: z.number().min(3).max(20).optional(),
+      passwordPolicy: z.object({
+        minLength: z.number().min(6).max(32),
+        requireUppercase: z.boolean(),
+        requireNumber: z.boolean(),
+        requireSpecial: z.boolean(),
+      }).optional(),
+      maxFileSizeMb: z.number().min(1).max(500).optional(),
+      allowedFileTypes: z.array(z.string()).optional(),
+      notifChannels: z.array(z.enum(["email", "push", "in-app", "sms"])).optional(),
+      incidentCategories: z.array(z.string()).optional(),
+      features: z.record(z.boolean()).optional(),
+    });
+
+    const body = UpdateConfigDto.safeParse(req.body);
+    if (!body.success) throw new ValidationError("Validation failed", body.error.errors);
+
+    const tenantId = (req as any).tenantId;
+    const config = await basePrisma.tenantConfig.upsert({
+      where: { tenantId },
+      update: body.data,
+      create: { tenantId, ...body.data },
+    });
+
+    await auditLog.log({
+      tenantId, userId: (req as any).userId, action: "UPDATE",
+      resource: "tenant_config", resourceId: tenantId, after: body.data, ipAddress: req.ip,
+    });
+
+    return reply.send({ success: true, data: config });
+  });
+
   fastify.post("/me/smtp/test", { preHandler: [requireTenantAdmin()] }, async (req, reply) => {
     const tenantId = (req as any).tenantId;
     const smtp = await basePrisma.tenantSmtp.findUnique({ where: { tenantId } });
@@ -155,5 +192,141 @@ export default async function tenantRoutes(fastify: FastifyInstance) {
     const svc = new AuditLogService();
     const result = await svc.verifyIntegrity((req as any).tenantId);
     return reply.send({ success: true, data: result });
+  });
+
+  // ── SuperAdmin: get specific tenant ──────────────────────────────────────
+  fastify.get("/:id", { preHandler: [requireSuperAdmin()] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const tenant = await basePrisma.tenant.findUnique({
+      where: { id, deletedAt: null },
+      include: {
+        branding: true,
+        config: true,
+        smtp: { select: { host: true, port: true, fromEmail: true, fromName: true, isVerified: true } },
+        _count: { select: { users: true, sites: true, incidents: true, audits: true } },
+      },
+    });
+    if (!tenant) throw new NotFoundError("Tenant");
+    return reply.send({ success: true, data: tenant });
+  });
+
+  // ── SuperAdmin: update tenant ─────────────────────────────────────────────
+  fastify.put("/:id", { preHandler: [requireSuperAdmin()] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const UpdateTenantDto = z.object({
+      name: z.string().min(2).max(200).optional(),
+      legalName: z.string().optional(),
+      plan: z.enum(["STARTER", "PROFESSIONAL", "ENTERPRISE", "WHITE_LABEL"]).optional(),
+      industry: z.string().optional(),
+      country: z.string().optional(),
+      timezone: z.string().optional(),
+      locale: z.string().optional(),
+      maxUsers: z.number().min(1).optional(),
+      maxSites: z.number().min(1).optional(),
+      trialEndsAt: z.string().datetime().optional(),
+    });
+
+    const body = UpdateTenantDto.safeParse(req.body);
+    if (!body.success) throw new ValidationError("Validation failed", body.error.errors);
+
+    const existing = await basePrisma.tenant.findUnique({ where: { id } });
+    if (!existing || existing.deletedAt) throw new NotFoundError("Tenant");
+
+    const tenant = await basePrisma.tenant.update({
+      where: { id },
+      data: { ...body.data, ...(body.data.trialEndsAt && { trialEndsAt: new Date(body.data.trialEndsAt) }) },
+    });
+
+    await auditLog.log({
+      userId: (req as any).userId, action: "UPDATE", resource: "tenant",
+      resourceId: id, before: existing, after: body.data, ipAddress: req.ip,
+    });
+
+    return reply.send({ success: true, data: tenant });
+  });
+
+  // ── SuperAdmin: change tenant status ─────────────────────────────────────
+  fastify.put("/:id/status", { preHandler: [requireSuperAdmin()] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = z.object({
+      status: z.enum(["TRIAL", "ACTIVE", "SUSPENDED", "CANCELLED"]),
+      reason: z.string().optional(),
+    }).safeParse(req.body);
+
+    if (!body.success) throw new ValidationError("Validation failed", body.error.errors);
+
+    const existing = await basePrisma.tenant.findUnique({ where: { id } });
+    if (!existing || existing.deletedAt) throw new NotFoundError("Tenant");
+
+    const tenant = await basePrisma.tenant.update({
+      where: { id },
+      data: { status: body.data.status },
+    });
+
+    await auditLog.log({
+      userId: (req as any).userId, action: "STATUS_CHANGE", resource: "tenant",
+      resourceId: id, before: { status: existing.status },
+      after: { status: body.data.status, reason: body.data.reason }, ipAddress: req.ip,
+    });
+
+    return reply.send({ success: true, data: tenant });
+  });
+
+  // ── SuperAdmin: tenant stats ──────────────────────────────────────────────
+  fastify.get("/:id/stats", { preHandler: [requireSuperAdmin()] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+
+    const [tenant, counts] = await Promise.all([
+      basePrisma.tenant.findUnique({ where: { id }, select: { maxUsers: true, maxSites: true } }),
+      basePrisma.tenant.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              users: { where: { deletedAt: null } },
+              sites: { where: { deletedAt: null } },
+              incidents: { where: { deletedAt: null } },
+              audits: { where: { deletedAt: null } },
+              documents: { where: { deletedAt: null } },
+              activityLogs: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!tenant || !counts) throw new NotFoundError("Tenant");
+
+    return reply.send({
+      success: true,
+      data: {
+        counts: counts._count,
+        limits: { maxUsers: tenant.maxUsers, maxSites: tenant.maxSites },
+        utilization: {
+          users: `${counts._count.users}/${tenant.maxUsers}`,
+          sites: `${counts._count.sites}/${tenant.maxSites}`,
+        },
+      },
+    });
+  });
+
+  // ── SuperAdmin: soft delete tenant ────────────────────────────────────────
+  fastify.delete("/:id", { preHandler: [requireSuperAdmin()] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+
+    const existing = await basePrisma.tenant.findUnique({ where: { id } });
+    if (!existing || existing.deletedAt) throw new NotFoundError("Tenant");
+
+    await basePrisma.tenant.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: "CANCELLED" },
+    });
+
+    await auditLog.log({
+      userId: (req as any).userId, action: "DELETE", resource: "tenant",
+      resourceId: id, before: { slug: existing.slug }, ipAddress: req.ip,
+    });
+
+    return reply.send({ success: true, message: "Tenant deleted" });
   });
 }

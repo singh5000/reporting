@@ -2,7 +2,7 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "@360crd/shared-types";
 import { sessionCache, permissionCache } from "@360crd/cache";
-import { basePrisma } from "@360crd/database";
+import { basePrisma, tenantContext } from "@360crd/database";
 import { config } from "../config";
 import {
   UnauthorizedError,
@@ -55,6 +55,14 @@ export async function authenticate(
   (request as any).roles = payload.roles;
   (request as any).permissions = permissions;
   (request as any).isSuperAdmin = payload.typ === "SUPER_ADMIN";
+
+  // Wire Prisma tenant isolation — without this, row-level filtering won't work
+  tenantContext.enterWith({
+    tenantId: payload.tid,
+    userId: payload.sub,
+    sessionId: payload.sid,
+    skipTenantFilter: payload.typ === "SUPER_ADMIN",
+  });
 
   // Refresh session TTL on activity
   await sessionCache.expire(sessionKey, 3600);

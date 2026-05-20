@@ -1,4 +1,4 @@
-import { prisma } from "@360crd/database";
+import { prisma, basePrisma } from "@360crd/database";
 import type { CreateUserDtoType, ListUsersDtoType } from "./user.dto";
 import type { PaginatedResult } from "@360crd/shared-types";
 
@@ -140,5 +140,113 @@ export class UserRepository {
         },
       },
     });
+  }
+
+  async assignSites(userId: string, siteIds: string[]) {
+    await basePrisma.userSite.deleteMany({ where: { userId } });
+    if (siteIds.length === 0) return;
+    await basePrisma.userSite.createMany({
+      data: siteIds.map(siteId => ({ userId, siteId })),
+      skipDuplicates: true,
+    });
+  }
+
+  async addSite(userId: string, siteId: string) {
+    return basePrisma.userSite.upsert({
+      where: { userId_siteId: { userId, siteId } },
+      update: {},
+      create: { userId, siteId },
+    });
+  }
+
+  async removeSite(userId: string, siteId: string) {
+    return basePrisma.userSite.deleteMany({ where: { userId, siteId } });
+  }
+
+  async getUserSites(userId: string) {
+    return basePrisma.userSite.findMany({
+      where: { userId },
+      include: {
+        site: {
+          select: {
+            id: true, name: true, code: true, type: true,
+            status: true, city: true, country: true,
+          },
+        },
+      },
+    });
+  }
+
+  async unlock(userId: string) {
+    return basePrisma.user.update({
+      where: { id: userId },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+      select: USER_SELECT,
+    });
+  }
+
+  async getLoginActivity(userId: string, limit = 20) {
+    return basePrisma.session.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true, ipAddress: true, userAgent: true,
+        location: true, isActive: true, createdAt: true, expiresAt: true,
+      },
+    });
+  }
+
+  async getActivityLogs(tenantId: string, userId: string, limit = 50) {
+    return basePrisma.activityLog.findMany({
+      where: { tenantId, userId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true, action: true, description: true,
+        resource: true, resourceId: true, ipAddress: true, createdAt: true,
+      },
+    });
+  }
+
+  async getUsersOnSites(tenantId: string, siteIds: string[], query: ListUsersDtoType): Promise<any> {
+    const skip = (query.page - 1) * query.limit;
+    const where: any = {
+      tenantId,
+      deletedAt: null,
+      sites: { some: { siteId: { in: siteIds } } },
+      ...(query.status && { status: query.status }),
+      ...(query.type && { type: query.type }),
+      ...(query.search && {
+        OR: [
+          { firstName: { contains: query.search, mode: "insensitive" } },
+          { lastName: { contains: query.search, mode: "insensitive" } },
+          { email: { contains: query.search, mode: "insensitive" } },
+        ],
+      }),
+    };
+
+    const [total, data] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where, skip, take: query.limit,
+        orderBy: { [query.sortBy]: query.sortOrder },
+        select: {
+          ...USER_SELECT,
+          roles: { include: { role: { select: { id: true, name: true, slug: true } } } },
+          sites: { include: { site: { select: { id: true, name: true } } } },
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total, page: query.page, limit: query.limit,
+        totalPages: Math.ceil(total / query.limit),
+        hasNextPage: query.page < Math.ceil(total / query.limit),
+        hasPrevPage: query.page > 1,
+      },
+    };
   }
 }

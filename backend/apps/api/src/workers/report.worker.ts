@@ -9,7 +9,7 @@ async function processReport(job: Job<ReportJob>): Promise<void> {
 
   await basePrisma.report.update({
     where: { id: reportId },
-    data: { status: "PROCESSING", startedAt: new Date() },
+    data: { status: "PROCESSING" },
   });
 
   try {
@@ -23,6 +23,12 @@ async function processReport(job: Job<ReportJob>): Promise<void> {
           return generateTrainingCompletion(tenantId, parameters);
         case "PPE_INVENTORY":
           return generatePpeInventory(tenantId, parameters);
+        case "WASTE_SUMMARY":
+          return generateWasteSummary(tenantId, parameters);
+        case "COMPLIANCE_STATUS":
+          return generateComplianceStatus(tenantId, parameters);
+        case "CUSTOM":
+          return { message: "Custom report — no generator registered", parameters };
         default:
           throw new Error(`Unknown report type: ${type}`);
       }
@@ -35,9 +41,8 @@ async function processReport(job: Job<ReportJob>): Promise<void> {
       where: { id: reportId },
       data: {
         status: "COMPLETED",
-        completedAt: new Date(),
+        generatedAt: new Date(),
         fileUrl,
-        metadata: { rowCount: Array.isArray(data) ? data.length : 1 } as any,
       },
     });
 
@@ -47,8 +52,8 @@ async function processReport(job: Job<ReportJob>): Promise<void> {
       where: { id: reportId },
       data: {
         status: "FAILED",
-        completedAt: new Date(),
-        metadata: { error: (err as Error).message } as any,
+        generatedAt: new Date(),
+        error: (err as Error).message,
       },
     });
     throw err;
@@ -85,15 +90,15 @@ async function generateAuditSummary(
   const { from, to } = params as { from?: string; to?: string };
   const where: any = { tenantId, deletedAt: null };
   if (from || to) {
-    where.scheduledDate = {};
-    if (from) where.scheduledDate.gte = new Date(from as string);
-    if (to) where.scheduledDate.lte = new Date(to as string);
+    where.scheduledAt = {};
+    if (from) where.scheduledAt.gte = new Date(from as string);
+    if (to) where.scheduledAt.lte = new Date(to as string);
   }
 
   const audits = await prisma.audit.findMany({
     where,
-    orderBy: { scheduledDate: "desc" },
-    include: { findings: { select: { severity: true, status: true } } },
+    orderBy: { scheduledAt: "desc" },
+    include: { auditFindings: { select: { severity: true, status: true } } },
   });
 
   return { audits, total: audits.length };
@@ -125,7 +130,7 @@ async function generatePpeInventory(
   _params: Record<string, unknown>
 ) {
   const items = await prisma.pPEItem.findMany({
-    where: { tenantId, deletedAt: null },
+    where: { tenantId },
     include: {
       assignments: {
         where: { returnedAt: null },
@@ -136,6 +141,80 @@ async function generatePpeInventory(
   });
 
   return { items, total: items.length };
+}
+
+async function generateWasteSummary(
+  tenantId: string,
+  params: Record<string, unknown>
+) {
+  const { from, to, siteId } = params as { from?: string; to?: string; siteId?: string };
+  const where: any = { tenantId, ...(siteId && { siteId }) };
+  if (from || to) {
+    where.disposedAt = {};
+    if (from) where.disposedAt.gte = new Date(from as string);
+    if (to) where.disposedAt.lte = new Date(to as string);
+  }
+
+  const [records, byCategory, aggregates] = await Promise.all([
+    basePrisma.wasteRecord.findMany({ where, orderBy: { disposedAt: "desc" }, include: { site: { select: { name: true } } } }),
+    basePrisma.wasteRecord.groupBy({ by: ["category"], where, _count: true, _sum: { quantity: true } }),
+    basePrisma.wasteRecord.aggregate({ where, _sum: { quantity: true, cost: true } }),
+  ]);
+
+  return {
+    records,
+    summary: {
+      total: records.length,
+      totalQuantity: aggregates._sum.quantity,
+      totalCost: aggregates._sum.cost,
+      byCategory,
+    },
+  };
+}
+
+async function generateComplianceStatus(
+  tenantId: string,
+  _params: Record<string, unknown>
+) {
+  const now = new Date();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [auditScore, overdueAudits, openIncidents, trainingRate, inductionRate] = await Promise.all([
+    basePrisma.audit.aggregate({
+      where: { tenantId, percentage: { not: null } },
+      _avg: { percentage: true },
+    }),
+    basePrisma.audit.count({
+      where: { tenantId, deletedAt: null, status: { notIn: ["COMPLETED", "REVIEWED", "ARCHIVED", "CANCELLED"] }, dueDate: { lt: now } },
+    }),
+    basePrisma.incident.count({
+      where: { tenantId, deletedAt: null, status: { notIn: ["CLOSED", "CANCELLED"] } },
+    }),
+    basePrisma.trainingEnrollment.groupBy({
+      by: ["status"],
+      where: { tenantId },
+      _count: true,
+    }),
+    basePrisma.inductionEnrollment.groupBy({
+      by: ["status"],
+      where: { tenantId },
+      _count: true,
+    }),
+  ]);
+
+  const trainingTotal = trainingRate.reduce((s: number, r: any) => s + r._count, 0);
+  const trainingCompleted = trainingRate.find((r: any) => r.status === "COMPLETED")?._count ?? 0;
+  const inductionTotal = inductionRate.reduce((s: number, r: any) => s + r._count, 0);
+  const inductionCompleted = inductionRate.find((r: any) => r.status === "COMPLETED")?._count ?? 0;
+
+  return {
+    complianceScore: Math.round(auditScore._avg.percentage ?? 0),
+    overdueAudits,
+    openIncidents,
+    trainingCompletionRate: trainingTotal > 0 ? Math.round((trainingCompleted / trainingTotal) * 100) : 0,
+    inductionCompletionRate: inductionTotal > 0 ? Math.round((inductionCompleted / inductionTotal) * 100) : 0,
+    generatedAt: now,
+  };
 }
 
 export function createReportWorker(): Worker {

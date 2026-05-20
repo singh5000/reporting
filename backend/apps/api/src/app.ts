@@ -14,12 +14,15 @@ import websocketPlugin from "./plugins/websocket.plugin";
 
 // ── Route modules ─────────────────────────────────────────────────────────
 import authRoutes from "./modules/auth/auth.routes";
+import publicRoutes from "./modules/public/public.routes";
+import customerRoutes from "./modules/customers/customer.routes";
 import tenantRoutes from "./modules/tenants/tenant.routes";
 import userRoutes from "./modules/users/user.routes";
 import siteRoutes from "./modules/sites/site.routes";
 import incidentRoutes from "./modules/incidents/incident.routes";
 import auditRoutes from "./modules/audits/audit.routes";
 import trainingRoutes from "./modules/training/training.routes";
+import inductionRoutes from "./modules/induction/induction.routes";
 import ppeRoutes from "./modules/ppe/ppe.routes";
 import assetRoutes from "./modules/assets/asset.routes";
 import wasteRoutes from "./modules/waste/waste.routes";
@@ -29,6 +32,8 @@ import reportRoutes from "./modules/reports/report.routes";
 import activityRoutes from "./modules/activity/activity.routes";
 import roleRoutes from "./modules/roles/role.routes";
 import webhookRoutes from "./modules/webhooks/webhook.routes";
+import feedbackRoutes from "./modules/feedback/feedback.routes";
+import settingsRoutes from "./modules/settings/settings.routes";
 
 export async function buildApp() {
   const app = Fastify({
@@ -129,19 +134,22 @@ export async function buildApp() {
 
   // ── API v1 Routes ──────────────────────────────────────────────────────
   await app.register(async (v1) => {
-    // Public routes (no tenant resolution required)
+    // Public routes — no auth required, tenant resolved by header/subdomain
     await v1.register(authRoutes, { prefix: "/auth" });
+    await v1.register(publicRoutes, { prefix: "/public" });
 
     // Tenant-aware routes
     await v1.register(async (tenant) => {
       // All routes in here require tenant resolution via middleware
       await tenant.register(tenantRoutes, { prefix: "/tenants" });
       await tenant.register(userRoutes, { prefix: "/users" });
+      await tenant.register(customerRoutes, { prefix: "/customers" });
       await tenant.register(roleRoutes, { prefix: "/roles" });
       await tenant.register(siteRoutes, { prefix: "/sites" });
       await tenant.register(incidentRoutes, { prefix: "/incidents" });
       await tenant.register(auditRoutes, { prefix: "/audits" });
       await tenant.register(trainingRoutes, { prefix: "/training" });
+      await tenant.register(inductionRoutes, { prefix: "/inductions" });
       await tenant.register(ppeRoutes, { prefix: "/ppe" });
       await tenant.register(assetRoutes, { prefix: "/assets" });
       await tenant.register(wasteRoutes, { prefix: "/waste" });
@@ -150,6 +158,8 @@ export async function buildApp() {
       await tenant.register(reportRoutes, { prefix: "/reports" });
       await tenant.register(activityRoutes, { prefix: "/activity" });
       await tenant.register(webhookRoutes, { prefix: "/webhooks" });
+      await tenant.register(feedbackRoutes, { prefix: "/feedback" });
+      await tenant.register(settingsRoutes, { prefix: "/settings" });
     });
   }, { prefix: "/api/v1" });
 

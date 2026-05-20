@@ -43,7 +43,7 @@ function createQueue<T>(name: string) {
 export const emailQueue = createQueue<EmailJob>(QUEUES.EMAIL);
 export const notificationQueue = createQueue<NotificationJob>(QUEUES.NOTIFICATION);
 export const reportQueue = createQueue<ReportJob>(QUEUES.REPORT);
-export const webhookQueue = createQueue<{ tenantId: string; event: string; payload: unknown }>(QUEUES.WEBHOOK);
+export const webhookQueue = createQueue<{ webhookId?: string; tenantId: string; event: string; payload: unknown }>(QUEUES.WEBHOOK);
 export const auditLogQueue = createQueue<{ entry: unknown }>(QUEUES.AUDIT_LOG);
 export const cleanupQueue = createQueue<{ task: string; params?: unknown }>(QUEUES.CLEANUP);
 

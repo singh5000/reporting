@@ -53,6 +53,7 @@ export interface LoginResult {
   user: SafeUser;
   tokens: AuthTokens;
   sessionId: string;
+  tenantSlug: string;
   requiresMfa?: boolean;
   mfaToken?: string;
 }

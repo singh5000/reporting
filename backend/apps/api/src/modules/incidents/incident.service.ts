@@ -34,15 +34,9 @@ export class IncidentService {
       type: Events.INCIDENT_CREATED,
       tenantId,
       userId: reportedById,
-      payload: {
-        incidentId: incident.id,
-        refNumber,
-        severity: dto.severity,
-        siteId: dto.siteId,
-      },
+      payload: { incidentId: incident.id, refNumber, severity: dto.severity, siteId: dto.siteId },
     });
 
-    // Notify assignee
     if (dto.assignedToId) {
       await notificationQueue.add("incident-assigned", {
         tenantId,
@@ -55,7 +49,6 @@ export class IncidentService {
       });
     }
 
-    // Critical severity — escalation
     if (dto.severity === "CRITICAL") {
       await notificationQueue.add(
         "incident-critical",
@@ -75,14 +68,14 @@ export class IncidentService {
     return incident;
   }
 
-  async findById(id: string, userId: string, isSuperAdmin: boolean) {
+  async findById(id: string) {
     const incident = await this.repo.findById(id);
     if (!incident) throw new NotFoundError("Incident", id);
     return incident;
   }
 
-  async findMany(tenantId: string, query: ListIncidentsDtoType) {
-    return this.repo.findMany(tenantId, query);
+  async findMany(tenantId: string, query: ListIncidentsDtoType, restrictToSiteIds?: string[]) {
+    return this.repo.findMany(tenantId, query, restrictToSiteIds);
   }
 
   async update(
@@ -150,17 +143,13 @@ export class IncidentService {
     });
   }
 
-  async createCAPA(
-    incidentId: string,
-    tenantId: string,
-    userId: string,
-    dto: CreateCAPADtoType
-  ) {
+  async createCAPA(incidentId: string, tenantId: string, userId: string, dto: CreateCAPADtoType) {
     const incident = await this.repo.findById(incidentId);
     if (!incident) throw new NotFoundError("Incident", incidentId);
 
     const capa = await this.repo.createCAPA(tenantId, incidentId, {
       ...dto,
+      status: "OPEN",
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
     });
 
@@ -183,12 +172,10 @@ export class IncidentService {
     return capa;
   }
 
-  async updateCAPA(
-    capaId: string,
-    tenantId: string,
-    userId: string,
-    dto: UpdateCAPADtoType
-  ) {
+  async updateCAPA(capaId: string, tenantId: string, userId: string, dto: UpdateCAPADtoType) {
+    const existing = await this.repo.findCapaById(capaId);
+    if (!existing) throw new NotFoundError("CAPA", capaId);
+
     const updated = await this.repo.updateCAPA(capaId, {
       ...dto,
       ...(dto.status === "COMPLETED" ? { completedAt: new Date() } : {}),
@@ -200,10 +187,11 @@ export class IncidentService {
       action: "UPDATE",
       resource: "incident_capa",
       resourceId: capaId,
+      before: { status: existing.status },
       after: { status: dto.status },
     });
 
-    if (dto.status === "COMPLETED") {
+    if (dto.status === "COMPLETED" && existing.status !== "COMPLETED") {
       eventBus.publish({
         type: Events.INCIDENT_CAPA_COMPLETED,
         tenantId,
@@ -215,11 +203,12 @@ export class IncidentService {
     return updated;
   }
 
-  async getStats(tenantId: string, dateFrom?: string, dateTo?: string) {
+  async getStats(tenantId: string, dateFrom?: string, dateTo?: string, siteIds?: string[]) {
     return this.repo.getStats(
       tenantId,
       dateFrom ? new Date(dateFrom) : undefined,
-      dateTo ? new Date(dateTo) : undefined
+      dateTo ? new Date(dateTo) : undefined,
+      siteIds
     );
   }
 }

@@ -297,6 +297,10 @@ export class AuthService {
     const roles = user.roles.map((ur: any) => ur.role.slug);
     const sessionExpiry = addSeconds(new Date(), SESSION_TTL_SECONDS * (dto.rememberMe ? 24 : 1));
 
+    // Fetch tenant slug once — used in JWT and returned to client for header persistence
+    const tenant = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } });
+    const tenantSlug = tenant?.slug ?? "";
+
     const session = await this.repo.createSession({
       userId: user.id,
       tenantId,
@@ -306,7 +310,7 @@ export class AuthService {
       expiresAt: sessionExpiry,
     });
 
-    const tokens = await this.generateTokens(user.id, tenantId, session.id, user.type, roles);
+    const tokens = await this.generateTokens(user.id, tenantId, session.id, user.type, roles, tenantSlug);
 
     // Store session in Redis for fast validation
     await sessionCache.set(
@@ -343,12 +347,22 @@ export class AuthService {
       payload: { sessionId: session.id, ipAddress: meta.ipAddress },
     });
 
-    const safeUser = this.toSafeUser(user, roles, []);
+    const permissions: string[] = [
+      ...new Set<string>(
+        user.roles.flatMap((ur: any) =>
+          ur.role.permissions.map((rp: any) =>
+            `${rp.permission.resource}:${rp.permission.action}`
+          )
+        )
+      ),
+    ];
+    const safeUser = this.toSafeUser(user, roles, permissions);
 
     return {
       user: safeUser,
       tokens,
       sessionId: session.id,
+      tenantSlug,
     };
   }
 
@@ -357,17 +371,18 @@ export class AuthService {
     tenantId: string,
     sessionId: string,
     userType: string,
-    roles: string[]
+    roles: string[],
+    tenantSlug?: string
   ): Promise<AuthTokens> {
-    const tenant = await basePrisma.tenant.findUnique({
+    const slug = tenantSlug ?? (await basePrisma.tenant.findUnique({
       where: { id: tenantId },
       select: { slug: true },
-    });
+    }))?.slug ?? "";
 
     const payload: Omit<JwtPayload, "iat" | "exp"> = {
       sub: userId,
       tid: tenantId,
-      tsl: tenant?.slug || "",
+      tsl: slug,
       sid: sessionId,
       typ: userType as any,
       roles,
@@ -376,7 +391,7 @@ export class AuthService {
     };
 
     const accessToken = jwt.sign(payload, config.auth.jwtSecret, {
-      expiresIn: config.auth.accessTokenExpiry,
+      expiresIn: config.auth.accessTokenExpiry as any,
     });
 
     const refreshToken = randomUUID() + "-" + randomUUID();

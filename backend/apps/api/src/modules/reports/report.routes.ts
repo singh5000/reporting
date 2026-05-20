@@ -4,11 +4,11 @@ import { authenticate } from "../../middleware/authenticate";
 import { authorize } from "../../middleware/authorize";
 import { prisma } from "@360crd/database";
 import { reportQueue } from "@360crd/queue";
-import { ValidationError } from "../../shared/errors/http.errors";
+import { ValidationError, NotFoundError } from "../../shared/errors/http.errors";
 
 const RequestReportDto = z.object({
   title: z.string().min(3),
-  type: z.enum(["INCIDENT_SUMMARY","AUDIT_SUMMARY","TRAINING_COMPLETION","PPE_INVENTORY","WASTE_SUMMARY","COMPLIANCE_STATUS","CUSTOM"]),
+  type: z.enum(["INCIDENT_SUMMARY", "AUDIT_SUMMARY", "TRAINING_COMPLETION", "PPE_INVENTORY", "WASTE_SUMMARY", "COMPLIANCE_STATUS", "CUSTOM"]),
   parameters: z.record(z.unknown()).default({}),
   filters: z.record(z.unknown()).default({}),
 });
@@ -16,36 +16,130 @@ const RequestReportDto = z.object({
 export default async function reportRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", authenticate);
 
-  fastify.get("/", { preHandler: [authorize("report:read")] }, async (req, reply) => {
-    const reports = await prisma.report.findMany({
-      where: { requestedById: (req as any).userId },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+  // ── Dashboard overview ─────────────────────────────────────────────────────
+  fastify.get("/dashboard", { preHandler: [authorize("report:read")] }, async (req, reply) => {
+    const r = req as any;
+    const tenantId = r.tenantId;
+    const now = new Date();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      incidentTotal, incidentOpen, incidentThisMonth,
+      auditTotal, auditCompleted, auditPassed,
+      trainingEnrollments, trainingCompleted,
+      openCapas, overdueAudits, overdueCapas,
+    ] = await Promise.all([
+      prisma.incident.count({ where: { tenantId, deletedAt: null } }),
+      prisma.incident.count({ where: { tenantId, deletedAt: null, status: { notIn: ["CLOSED", "CANCELLED"] } } }),
+      prisma.incident.count({ where: { tenantId, deletedAt: null, occurredAt: { gte: thirtyDaysAgo } } }),
+
+      prisma.audit.count({ where: { tenantId, deletedAt: null } }),
+      prisma.audit.count({ where: { tenantId, deletedAt: null, status: { in: ["COMPLETED", "REVIEWED"] } } }),
+      prisma.audit.count({ where: { tenantId, deletedAt: null, passed: true } }),
+
+      prisma.trainingEnrollment.count({ where: { tenantId } }),
+      prisma.trainingEnrollment.count({ where: { tenantId, status: "COMPLETED" } }),
+
+      prisma.incidentCAPA.count({ where: { tenantId, status: { notIn: ["COMPLETED", "VERIFIED", "CANCELLED"] } } }),
+      prisma.audit.count({
+        where: { tenantId, deletedAt: null, status: { notIn: ["COMPLETED", "REVIEWED", "ARCHIVED", "CANCELLED"] }, dueDate: { lt: now } },
+      }),
+      prisma.incidentCAPA.count({
+        where: { tenantId, status: { notIn: ["COMPLETED", "VERIFIED", "CANCELLED"] }, dueDate: { lt: now } },
+      }),
+    ]);
+
+    const complianceScore = auditCompleted > 0 ? Math.round((auditPassed / auditCompleted) * 100) : 0;
+
+    return reply.send({
+      success: true,
+      data: {
+        incidents: { total: incidentTotal, open: incidentOpen, thisMonth: incidentThisMonth },
+        audits: { total: auditTotal, completed: auditCompleted, passed: auditPassed, complianceScore },
+        training: { enrolled: trainingEnrollments, completed: trainingCompleted, completionRate: trainingEnrollments > 0 ? Math.round((trainingCompleted / trainingEnrollments) * 100) : 0 },
+        actions: { openCapas, overdueAudits, overdueCapas },
+      },
     });
-    return reply.send({ success: true, data: reports });
   });
 
-  fastify.post("/", { preHandler: [authorize("report:create")] }, async (req, reply) => {
+  // ── Compliance trend ───────────────────────────────────────────────────────
+  fastify.get("/compliance-trend", { preHandler: [authorize("report:read")] }, async (req, reply) => {
+    const r = req as any;
+    const { months = 6 } = req.query as any;
+    const tenantId = r.tenantId;
+
+    const data = await prisma.audit.findMany({
+      where: { tenantId, deletedAt: null, percentage: { not: null } },
+      select: { completedAt: true, percentage: true, passed: true },
+      orderBy: { completedAt: "desc" },
+      take: Number(months) * 20,
+    });
+
+    return reply.send({ success: true, data });
+  });
+
+  // ── List reports ───────────────────────────────────────────────────────────
+  fastify.get("/", { preHandler: [authorize("report:read")] }, async (req, reply) => {
+    const r = req as any;
+    const { page = 1, limit = 20 } = req.query as any;
+    const [total, data] = await Promise.all([
+      prisma.report.count({ where: { tenantId: r.tenantId } }),
+      prisma.report.findMany({
+        where: { tenantId: r.tenantId },
+        orderBy: { createdAt: "desc" },
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit),
+      }),
+    ]);
+    return reply.send({ success: true, data, meta: { total } });
+  });
+
+  // ── Request report generation ──────────────────────────────────────────────
+  fastify.post("/", { preHandler: [authorize("report:export")] }, async (req, reply) => {
     const body = RequestReportDto.safeParse(req.body);
     if (!body.success) throw new ValidationError("Validation failed", body.error.errors);
 
-    const tenantId = (req as any).tenantId;
-    const userId = (req as any).userId;
-
+    const r = req as any;
     const report = await prisma.report.create({
-      data: { tenantId, title: body.data.title, type: body.data.type as any, status: "PENDING",
-        parameters: body.data.parameters as any, filters: body.data.filters as any, requestedById: userId },
+      data: {
+        tenantId: r.tenantId,
+        title: body.data.title,
+        type: body.data.type as any,
+        status: "PENDING",
+        parameters: body.data.parameters as any,
+        filters: body.data.filters as any,
+        requestedById: r.userId,
+      },
     });
 
-    await reportQueue.add("generate", { tenantId, reportId: report.id, type: body.data.type,
-      parameters: body.data.parameters, filters: body.data.filters, requestedById: userId });
+    await reportQueue.add("generate", {
+      tenantId: r.tenantId,
+      reportId: report.id,
+      type: body.data.type,
+      parameters: body.data.parameters,
+      filters: body.data.filters,
+      requestedById: r.userId,
+    });
 
     return reply.status(201).send({ success: true, data: report });
   });
 
+  // ── Get report detail ──────────────────────────────────────────────────────
   fastify.get("/:id", { preHandler: [authorize("report:read")] }, async (req, reply) => {
     const { id } = req.params as { id: string };
-    const report = await prisma.report.findUnique({ where: { id } });
+    const r = req as any;
+    const report = await prisma.report.findFirst({ where: { id, tenantId: r.tenantId } });
+    if (!report) throw new NotFoundError("Report", id);
     return reply.send({ success: true, data: report });
+  });
+
+  // ── Delete report ──────────────────────────────────────────────────────────
+  fastify.delete("/:id", { preHandler: [authorize("report:delete")] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const r = req as any;
+    const report = await prisma.report.findFirst({ where: { id, tenantId: r.tenantId } });
+    if (!report) throw new NotFoundError("Report", id);
+    await prisma.report.delete({ where: { id } });
+    return reply.status(204).send();
   });
 }

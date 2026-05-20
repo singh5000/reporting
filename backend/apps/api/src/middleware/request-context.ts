@@ -22,7 +22,6 @@ export function getRequestContextSafe(): RequestContext | undefined {
 declare module "fastify" {
   interface FastifyRequest {
     requestId: string;
-    context: RequestContext;
     tenantId: string;
     tenantSlug: string;
     userId?: string;

@@ -25,7 +25,7 @@ export class IncidentController {
   async findOne(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     const req = request as any;
-    const incident = await service.findById(id, req.userId, req.isSuperAdmin);
+    const incident = await service.findById(id);
     return reply.send({ success: true, data: incident });
   }
 

@@ -1,3 +1,7 @@
+import { config } from "dotenv";
+import { resolve } from "path";
+config({ path: resolve(__dirname, "../../../.env") }); // backend/.env
+
 import { PrismaClient, UserType, TenantPlan, TenantStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -60,7 +64,31 @@ async function main() {
 
   console.log("✅ System roles seeded");
 
-  // ── Assign all permissions to super admin ────────────────────────────────────
+  const customerRole = await findOrCreateSystemRole({
+    slug: "customer", name: "Customer",
+    description: "Customer with read-only site and compliance visibility", level: 10,
+  });
+
+  console.log("✅ System roles seeded");
+
+  // Helper — assign a permission set to a role
+  async function assignPerms(roleId: string, matrix: Record<string, string[]>) {
+    for (const [resource, actions] of Object.entries(matrix)) {
+      for (const action of actions) {
+        const perm = await prisma.permission.findUnique({
+          where: { resource_action_scope: { resource, action, scope: "TENANT" } },
+        });
+        if (!perm) continue;
+        await prisma.rolePermission.upsert({
+          where: { roleId_permissionId: { roleId, permissionId: perm.id } },
+          update: {},
+          create: { roleId, permissionId: perm.id },
+        });
+      }
+    }
+  }
+
+  // ── Super Admin — all permissions ────────────────────────────────────────────
   const allPerms = await prisma.permission.findMany();
   for (const perm of allPerms) {
     await prisma.rolePermission.upsert({
@@ -70,7 +98,7 @@ async function main() {
     });
   }
 
-  // ── Tenant Admin gets all except global tenant management ─────────────────────
+  // ── Tenant Admin — all except cross-tenant management ────────────────────────
   const tenantAdminPerms = allPerms.filter(p => p.resource !== "tenant" || p.action === "read");
   for (const perm of tenantAdminPerms) {
     await prisma.rolePermission.upsert({
@@ -79,6 +107,52 @@ async function main() {
       create: { roleId: tenantAdminRole.id, permissionId: perm.id },
     });
   }
+
+  // ── Manager — operational control over assigned sites ────────────────────────
+  await assignPerms(managerRole.id, {
+    site:           ["read"],
+    customer:       ["read"],
+    user:           ["read", "assign"],
+    incident:       ["create", "read", "update", "assign", "approve"],
+    audit:          ["create", "read", "update", "assign", "approve"],
+    audit_template: ["create", "read", "update"],
+    training:       ["create", "read", "update", "assign"],
+    induction:      ["create", "read", "update", "assign"],
+    ppe:            ["create", "read", "update", "assign"],
+    asset:          ["create", "read", "update", "assign"],
+    waste:          ["create", "read", "update"],
+    document:       ["create", "read", "update", "delete"],
+    notification:   ["read"],
+    report:         ["read", "export"],
+    activity_log:   ["read"],
+    feedback:       ["read", "update"],
+  });
+
+  // ── Staff — task execution, own data only ────────────────────────────────────
+  await assignPerms(staffRole.id, {
+    site:         ["read"],
+    incident:     ["create", "read", "update"],
+    audit:        ["read", "update"],
+    training:     ["read"],
+    induction:    ["read"],
+    ppe:          ["read"],
+    asset:        ["read"],
+    waste:        ["create", "read"],
+    document:     ["create", "read"],
+    notification: ["read"],
+    report:       ["read"],
+  });
+
+  // ── Customer — read-only visibility ──────────────────────────────────────────
+  await assignPerms(customerRole.id, {
+    site:         ["read"],
+    incident:     ["read"],
+    audit:        ["read"],
+    report:       ["read", "export"],
+    document:     ["read"],
+    notification: ["read"],
+    feedback:     ["create", "read"],
+  });
 
   console.log("✅ Role permissions assigned");
 
@@ -207,6 +281,74 @@ async function main() {
   });
 
   console.log(`✅ Demo admin created: ${demoAdminEmail}`);
+
+  // ── Demo Manager User ─────────────────────────────────────────────────────────
+  const demoManagerEmail = process.env.DEMO_MANAGER_EMAIL || "manager@demo-corp.com";
+  const demoManagerPassword = process.env.DEMO_MANAGER_PASSWORD || "Manager@360!";
+  const demoManagerHash = await bcrypt.hash(demoManagerPassword, 12);
+
+  const demoManager = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: demoTenant.id, email: demoManagerEmail } },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      email: demoManagerEmail,
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
+      passwordHash: demoManagerHash,
+      firstName: "Demo",
+      lastName: "Manager",
+      type: UserType.STAFF,
+      mustChangePassword: false,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: demoManager.id, roleId: managerRole.id } },
+    update: {},
+    create: {
+      userId: demoManager.id,
+      roleId: managerRole.id,
+      tenantId: demoTenant.id,
+      assignedBy: demoAdmin.id,
+    },
+  });
+
+  console.log(`✅ Demo manager created: ${demoManagerEmail}`);
+
+  // ── Demo Staff User ───────────────────────────────────────────────────────────
+  const demoStaffEmail = process.env.DEMO_STAFF_EMAIL || "staff@demo-corp.com";
+  const demoStaffPassword = process.env.DEMO_STAFF_PASSWORD || "Staff@360!";
+  const demoStaffHash = await bcrypt.hash(demoStaffPassword, 12);
+
+  const demoStaff = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: demoTenant.id, email: demoStaffEmail } },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      email: demoStaffEmail,
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
+      passwordHash: demoStaffHash,
+      firstName: "Demo",
+      lastName: "Staff",
+      type: UserType.STAFF,
+      mustChangePassword: false,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: demoStaff.id, roleId: staffRole.id } },
+    update: {},
+    create: {
+      userId: demoStaff.id,
+      roleId: staffRole.id,
+      tenantId: demoTenant.id,
+      assignedBy: demoAdmin.id,
+    },
+  });
+
+  console.log(`✅ Demo staff created: ${demoStaffEmail}`);
   console.log("🎉 Seed complete!");
 }
 

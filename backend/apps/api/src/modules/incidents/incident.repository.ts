@@ -1,4 +1,4 @@
-import { prisma } from "@360crd/database";
+import { prisma, basePrisma } from "@360crd/database";
 import type { CreateIncidentDtoType, ListIncidentsDtoType } from "./incident.dto";
 import type { PaginatedResult } from "@360crd/shared-types";
 
@@ -45,13 +45,15 @@ export class IncidentRepository {
 
   async findMany(
     tenantId: string,
-    query: ListIncidentsDtoType
+    query: ListIncidentsDtoType,
+    restrictToSiteIds?: string[]
   ): Promise<PaginatedResult<any>> {
     const skip = (query.page - 1) * query.limit;
 
     const where: any = {
       tenantId,
       deletedAt: null,
+      ...(restrictToSiteIds && { siteId: { in: restrictToSiteIds } }),
       ...(query.status && { status: query.status }),
       ...(query.severity && { severity: query.severity }),
       ...(query.type && { type: query.type }),
@@ -121,46 +123,102 @@ export class IncidentRepository {
     });
   }
 
+  // ── CAPA ────────────────────────────────────────────────────────────────────
   async createCAPA(tenantId: string, incidentId: string, data: any) {
     return prisma.incidentCAPA.create({
       data: { tenantId, incidentId, ...data },
+      include: { assignedTo: { select: { id: true, firstName: true, lastName: true } } },
     });
   }
 
   async updateCAPA(id: string, data: Partial<any>) {
-    return prisma.incidentCAPA.update({ where: { id }, data });
+    return prisma.incidentCAPA.update({
+      where: { id },
+      data,
+      include: { assignedTo: { select: { id: true, firstName: true, lastName: true } } },
+    });
   }
 
   async findCapasByIncident(incidentId: string) {
     return prisma.incidentCAPA.findMany({
       where: { incidentId },
       orderBy: { createdAt: "asc" },
+      include: { assignedTo: { select: { id: true, firstName: true, lastName: true } } },
     });
   }
 
-  async getStats(tenantId: string, dateFrom?: Date, dateTo?: Date) {
+  async findCapaById(id: string) {
+    return basePrisma.incidentCAPA.findUnique({ where: { id } });
+  }
+
+  async deleteCAPA(id: string) {
+    return basePrisma.incidentCAPA.delete({ where: { id } });
+  }
+
+  // ── Evidence ─────────────────────────────────────────────────────────────────
+  async getEvidence(incidentId: string) {
+    return prisma.incidentEvidence.findMany({
+      where: { incidentId },
+      orderBy: { uploadedAt: "asc" },
+    });
+  }
+
+  async addEvidence(tenantId: string, incidentId: string, uploadedById: string, data: {
+    type: string; fileUrl: string; filename: string;
+    fileSize?: number; mimeType?: string;
+  }) {
+    return prisma.incidentEvidence.create({
+      data: {
+        tenantId,
+        incidentId,
+        uploadedBy: uploadedById,
+        type: data.type as any,
+        fileUrl: data.fileUrl,
+        filename: data.filename,
+        fileSize: data.fileSize,
+        mimeType: data.mimeType,
+      },
+    });
+  }
+
+  async deleteEvidence(id: string) {
+    return basePrisma.incidentEvidence.delete({ where: { id } });
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────────
+  async getStats(tenantId: string, dateFrom?: Date, dateTo?: Date, siteIds?: string[]) {
     const where: any = {
       tenantId,
       deletedAt: null,
+      ...(siteIds && { siteId: { in: siteIds } }),
       ...(dateFrom || dateTo
         ? { occurredAt: { ...(dateFrom && { gte: dateFrom }), ...(dateTo && { lte: dateTo }) } }
         : {}),
     };
 
-    const [total, bySeverity, byStatus, byType, byMonth] = await Promise.all([
+    const [total, bySeverity, byStatus, byType, open, overdue] = await Promise.all([
       prisma.incident.count({ where }),
       prisma.incident.groupBy({ by: ["severity"], where, _count: true }),
       prisma.incident.groupBy({ by: ["status"], where, _count: true }),
       prisma.incident.groupBy({ by: ["type"], where, _count: true }),
-      prisma.$queryRaw`
-        SELECT DATE_TRUNC('month', "occurredAt") as month, COUNT(*) as count
-        FROM incidents
-        WHERE "tenantId" = ${tenantId} AND "deletedAt" IS NULL
-        GROUP BY month ORDER BY month DESC LIMIT 12
-      `,
+      prisma.incident.count({ where: { ...where, status: { notIn: ["CLOSED", "CANCELLED"] } } }),
+      prisma.incident.count({
+        where: {
+          ...where,
+          status: { notIn: ["CLOSED", "CANCELLED"] },
+          occurredAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
     ]);
 
-    return { total, bySeverity, byStatus, byType, byMonth };
+    return {
+      total,
+      open,
+      overdue,
+      bySeverity: bySeverity.reduce((acc: any, r) => { acc[r.severity] = r._count; return acc; }, {}),
+      byStatus: byStatus.reduce((acc: any, r) => { acc[r.status] = r._count; return acc; }, {}),
+      byType: byType.reduce((acc: any, r) => { acc[r.type] = r._count; return acc; }, {}),
+    };
   }
 
   async generateRefNumber(tenantId: string): Promise<string> {
