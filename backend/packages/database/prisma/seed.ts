@@ -88,25 +88,59 @@ async function main() {
     }
   }
 
-  // ── Super Admin — all permissions ────────────────────────────────────────────
-  const allPerms = await prisma.permission.findMany();
-  for (const perm of allPerms) {
-    await prisma.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId: superAdminRole.id, permissionId: perm.id } },
-      update: {},
-      create: { roleId: superAdminRole.id, permissionId: perm.id },
-    });
-  }
+  // ── Super Admin — full system control + read-only on operational modules ─────
+  // Operational day-to-day modules: Manager creates/approves, Super Admin views
+  await assignPerms(superAdminRole.id, {
+    // System / admin resources — full control
+    tenant:       ["create", "read", "update", "delete", "export"],
+    user:         ["create", "read", "update", "delete", "assign"],
+    role:         ["create", "read", "update", "delete", "assign"],
+    site:         ["create", "read", "update", "delete", "assign"],
+    customer:     ["create", "read", "update", "delete"],
+    notification: ["create", "read", "update", "delete"],
+    report:       ["read", "export"],
+    activity_log: ["read", "export"],
+    audit_log:    ["read", "export"],
+    api_key:      ["create", "read", "update", "delete"],
+    webhook:      ["create", "read", "update", "delete"],
+    feedback:     ["read", "update", "delete"],
+    // Operational modules — read/export only (Manager does the actions)
+    incident:       ["read", "export"],
+    audit:          ["read", "export"],
+    audit_template: ["read"],
+    training:       ["read", "export"],
+    induction:      ["read", "export"],
+    ppe:            ["read", "export"],
+    asset:          ["read", "export"],
+    waste:          ["read", "export"],
+    document:       ["read", "export"],
+  });
 
-  // ── Tenant Admin — all except cross-tenant management ────────────────────────
-  const tenantAdminPerms = allPerms.filter(p => p.resource !== "tenant" || p.action === "read");
-  for (const perm of tenantAdminPerms) {
-    await prisma.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId: tenantAdminRole.id, permissionId: perm.id } },
-      update: {},
-      create: { roleId: tenantAdminRole.id, permissionId: perm.id },
-    });
-  }
+  // ── Tenant Admin — same pattern scoped to tenant (no cross-tenant mgmt) ──────
+  await assignPerms(tenantAdminRole.id, {
+    // Admin resources — full control within tenant
+    user:         ["create", "read", "update", "delete", "assign"],
+    role:         ["read", "update", "assign"],
+    site:         ["create", "read", "update", "delete", "assign"],
+    customer:     ["create", "read", "update", "delete"],
+    notification: ["create", "read", "update", "delete"],
+    report:       ["read", "export"],
+    activity_log: ["read", "export"],
+    audit_log:    ["read", "export"],
+    api_key:      ["create", "read", "update", "delete"],
+    webhook:      ["create", "read", "update", "delete"],
+    feedback:     ["read", "update"],
+    // Operational modules — read/export only
+    incident:       ["read", "export"],
+    audit:          ["read", "export"],
+    audit_template: ["read"],
+    training:       ["read", "export"],
+    induction:      ["read", "export"],
+    ppe:            ["read", "export"],
+    asset:          ["read", "export"],
+    waste:          ["read", "export"],
+    document:       ["read", "export"],
+  });
 
   // ── Manager — operational control over assigned sites ────────────────────────
   await assignPerms(managerRole.id, {
@@ -349,6 +383,40 @@ async function main() {
   });
 
   console.log(`✅ Demo staff created: ${demoStaffEmail}`);
+
+  // ── Demo Customer User ────────────────────────────────────────────────────────
+  const demoCustomerEmail = process.env.DEMO_CUSTOMER_EMAIL || "customer@demo-corp.com";
+  const demoCustomerPassword = process.env.DEMO_CUSTOMER_PASSWORD || "Customer@360!";
+  const demoCustomerHash = await bcrypt.hash(demoCustomerPassword, 12);
+
+  const demoCustomer = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: demoTenant.id, email: demoCustomerEmail } },
+    update: {},
+    create: {
+      tenantId: demoTenant.id,
+      email: demoCustomerEmail,
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
+      passwordHash: demoCustomerHash,
+      firstName: "Demo",
+      lastName: "Customer",
+      type: UserType.CUSTOMER,
+      mustChangePassword: false,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: demoCustomer.id, roleId: customerRole.id } },
+    update: {},
+    create: {
+      userId: demoCustomer.id,
+      roleId: customerRole.id,
+      tenantId: demoTenant.id,
+      assignedBy: demoAdmin.id,
+    },
+  });
+
+  console.log(`✅ Demo customer created: ${demoCustomerEmail}`);
   console.log("🎉 Seed complete!");
 }
 
