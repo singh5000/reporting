@@ -2,10 +2,11 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ChevronsLeft, LogOut, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { APP_NAME, APP_TAGLINE, navGroups } from "@/lib/constants";
+import { APP_NAME, APP_TAGLINE, adminNavGroups, appNavGroups, portalNavGroups } from "@/lib/constants";
 import { authStore } from "@/lib/auth-store";
 import { themeStore, useTheme } from "@/lib/theme-store";
 import { useAuth } from "@/lib/auth-store";
+import { useBranding } from "@/lib/stores/branding.store";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -13,10 +14,21 @@ export function Sidebar() {
   const navigate = useNavigate();
   const theme = useTheme();
   const { user } = useAuth();
+  const { data: branding } = useBranding();
+  const appName = branding?.appName || APP_NAME;
 
   const permissions = user?.permissions ?? [];
   const canSee = (permission?: string) =>
     !permission || permissions.includes(permission) || permissions.includes("*");
+
+  const panel = pathname.startsWith("/admin")
+    ? "admin"
+    : pathname.startsWith("/portal")
+    ? "portal"
+    : "app";
+
+  const navGroups =
+    panel === "admin" ? adminNavGroups : panel === "portal" ? portalNavGroups : appNavGroups;
 
   const handleLogout = () => {
     authStore.logout();
@@ -32,13 +44,20 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex h-14 shrink-0 items-center justify-between px-4">
-        <Link to="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [background:var(--gradient-primary)]">
-            <ShieldCheck className="h-4.5 w-4.5 text-primary-foreground" />
+        <Link
+          to={panel === "admin" ? "/admin/dashboard" : panel === "portal" ? "/portal/dashboard" : "/app/dashboard"}
+          className="flex items-center gap-2.5 overflow-hidden"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [background:var(--gradient-primary)] overflow-hidden">
+            {branding?.logoUrl ? (
+              <img src={branding.logoUrl} alt={appName} className="h-full w-full object-contain" />
+            ) : (
+              <ShieldCheck className="h-4.5 w-4.5 text-primary-foreground" />
+            )}
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-tight">{APP_NAME}</p>
+              <p className="truncate text-sm font-semibold tracking-tight">{appName}</p>
               <p className="truncate text-[10px] text-muted-foreground">{APP_TAGLINE}</p>
             </div>
           )}

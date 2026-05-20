@@ -68,10 +68,10 @@ export const authStore = {
     return () => listeners.delete(l);
   },
 
-  login: async (email: string, password: string): Promise<LoginResponse> => {
-    // Reset to env default before login so stale localStorage slug doesn't poison the request
+  login: async (email: string, password: string, tenantSlug?: string): Promise<LoginResponse> => {
+    // Use explicit slug override, or fall back to env default
     setActiveTenantSlug(
-      (import.meta as any).env?.VITE_DEFAULT_TENANT_SLUG ?? "demo-corp"
+      tenantSlug ?? (import.meta as any).env?.VITE_DEFAULT_TENANT_SLUG ?? "demo-corp"
     );
     const res = await authService.login(email, password);
     const { tokens: { accessToken, refreshToken }, user } = res.data;

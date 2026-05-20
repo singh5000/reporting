@@ -7,6 +7,11 @@
  *   Frontend "facilities" → API "/sites"
  */
 export const ENDPOINTS = {
+  public: {
+    branding: "/public/branding",
+    health:   "/public/health",
+  },
+
   auth: {
     login:          "/auth/login",
     logout:         "/auth/logout",

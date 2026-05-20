@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { RefreshCw, ShieldCheck, Users, ChevronRight, Crown, Briefcase, HardHat, Eye } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/roles")({
-  head: () => ({ meta: [{ title: "Roles · 360CRD" }] }),
+export const Route = createFileRoute("/_authenticated/admin/roles")({
+  head: () => ({ meta: [{ title: "Roles Â· 360CRD" }] }),
   component: RolesPage,
 });
 
@@ -169,3 +169,4 @@ function RolesPage() {
     </AppShell>
   );
 }
+
