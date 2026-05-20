@@ -1,44 +1,64 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { mockRequest } from "@/lib/api/api-client";
-import { incidentStore as legacy } from "@/lib/incident-store";
-import type { Incident, IncidentStatus } from "@/lib/types/incident.types";
+import { incidentService, type Incident, type ListIncidentsParams, type CreateIncidentPayload } from "@/lib/api/services/incident.service";
 import type { ApiError } from "@/lib/types/api.types";
 import { toApiError } from "./_helpers";
 
+export type { Incident } from "@/lib/api/services/incident.service";
+
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 type IncidentState = {
   incidents: Incident[];
+  meta: PaginationMeta | null;
   loading: boolean;
   error: ApiError | null;
   initialized: boolean;
-  fetchIncidents: () => Promise<void>;
-  createIncident: (input: Omit<Incident, "id" | "reference" | "createdAt" | "status" | "timeline">) => Promise<Incident>;
-  updateStatus: (id: string, status: IncidentStatus) => Promise<void>;
+  params: ListIncidentsParams;
+  fetchIncidents: (params?: ListIncidentsParams) => Promise<void>;
+  createIncident: (payload: CreateIncidentPayload) => Promise<Incident>;
+  updateIncident: (id: string, payload: Partial<CreateIncidentPayload>) => Promise<void>;
   removeIncident: (id: string) => Promise<void>;
+  setParams: (params: Partial<ListIncidentsParams>) => void;
 };
 
-export const useIncidentStore = create<IncidentState>((set) => ({
-  incidents: legacy.getState(),
+export const useIncidentStore = create<IncidentState>((set, get) => ({
+  incidents: [],
+  meta: null,
   loading: false,
   error: null,
   initialized: false,
+  params: { page: 1, limit: 20, sortBy: "createdAt", sortOrder: "desc" },
 
-  fetchIncidents: async () => {
-    set({ loading: true, error: null });
+  setParams: (params) => {
+    set((s) => ({ params: { ...s.params, ...params } }));
+  },
+
+  fetchIncidents: async (params) => {
+    const merged = { ...get().params, ...params };
+    set({ loading: true, error: null, params: merged });
     try {
-      const data = await mockRequest(legacy.getState());
-      set({ incidents: data, loading: false, initialized: true });
+      const res = await incidentService.list(merged);
+      set({ incidents: res.data, meta: res.meta, loading: false, initialized: true });
     } catch (e) {
-      set({ loading: false, error: toApiError(e) });
+      const err = toApiError(e);
+      set({ loading: false, error: err });
       toast.error("Failed to load incidents");
     }
   },
 
-  createIncident: async (input) => {
+  createIncident: async (payload) => {
     try {
-      const created = await mockRequest(legacy.addIncident(input));
-      set({ incidents: legacy.getState() });
-      toast.success(`Incident ${created.reference} reported`);
+      const created = await incidentService.create(payload);
+      toast.success(`Incident ${created.refNumber} reported`);
+      await get().fetchIncidents();
       return created;
     } catch (e) {
       const err = toApiError(e);
@@ -47,12 +67,11 @@ export const useIncidentStore = create<IncidentState>((set) => ({
     }
   },
 
-  updateStatus: async (id, status) => {
+  updateIncident: async (id, payload) => {
     try {
-      await mockRequest(true);
-      legacy.updateIncidentStatus(id, status);
-      set({ incidents: legacy.getState() });
-      toast(`Status updated to ${status}`);
+      await incidentService.update(id, payload);
+      toast.success("Incident updated");
+      await get().fetchIncidents();
     } catch (e) {
       toast.error(toApiError(e).message);
     }
@@ -60,16 +79,11 @@ export const useIncidentStore = create<IncidentState>((set) => ({
 
   removeIncident: async (id) => {
     try {
-      await mockRequest(true);
-      legacy.removeIncident(id);
-      set({ incidents: legacy.getState() });
-      toast("Incident removed");
+      await incidentService.remove(id);
+      set((s) => ({ incidents: s.incidents.filter((i) => i.id !== id) }));
+      toast("Incident deleted");
     } catch (e) {
       toast.error(toApiError(e).message);
     }
   },
 }));
-
-if (typeof window !== "undefined") {
-  legacy.subscribe(() => useIncidentStore.setState({ incidents: legacy.getState() }));
-}

@@ -1,46 +1,62 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { mockRequest } from "@/lib/api/api-client";
-import { companyStore as legacy } from "@/lib/company-store";
-import type { Company } from "@/lib/types/company.types";
+import { customerService, type Customer, type ListCustomersParams, type CreateCustomerPayload } from "@/lib/api/services/customer.service";
 import type { ApiError } from "@/lib/types/api.types";
 import { toApiError } from "./_helpers";
 
+export type { Customer } from "@/lib/api/services/customer.service";
+
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 type CompanyState = {
-  companies: Company[];
-  activeId: string;
+  companies: Customer[];
+  meta: PaginationMeta | null;
   loading: boolean;
   error: ApiError | null;
   initialized: boolean;
-  fetchCompanies: () => Promise<void>;
-  createCompany: (input: Omit<Company, "id" | "reference" | "createdAt">) => Promise<Company>;
-  updateCompany: (id: string, patch: Partial<Company>) => Promise<void>;
-  setActive: (id: string) => void;
+  params: ListCustomersParams;
+  fetchCompanies: (params?: ListCustomersParams) => Promise<void>;
+  createCompany: (payload: CreateCustomerPayload) => Promise<Customer>;
+  updateCompany: (id: string, payload: Partial<CreateCustomerPayload>) => Promise<void>;
+  removeCompany: (id: string) => Promise<void>;
+  setParams: (params: Partial<ListCustomersParams>) => void;
 };
 
-export const useCompanyStore = create<CompanyState>((set) => ({
-  companies: legacy.getState(),
-  activeId: legacy.getActiveId(),
+export const useCompanyStore = create<CompanyState>((set, get) => ({
+  companies: [],
+  meta: null,
   loading: false,
   error: null,
   initialized: false,
+  params: { page: 1, limit: 20, sortBy: "name", sortOrder: "asc" },
 
-  fetchCompanies: async () => {
-    set({ loading: true, error: null });
+  setParams: (params) => {
+    set((s) => ({ params: { ...s.params, ...params } }));
+  },
+
+  fetchCompanies: async (params) => {
+    const merged = { ...get().params, ...params };
+    set({ loading: true, error: null, params: merged });
     try {
-      const data = await mockRequest(legacy.getState());
-      set({ companies: data, loading: false, initialized: true });
+      const res = await customerService.list(merged);
+      set({ companies: res.data, meta: res.meta, loading: false, initialized: true });
     } catch (e) {
-      set({ loading: false, error: toApiError(e) });
-      toast.error("Failed to load companies");
+      const err = toApiError(e);
+      set({ loading: false, error: err });
+      toast.error("Failed to load customers");
     }
   },
 
-  createCompany: async (input) => {
+  createCompany: async (payload) => {
     try {
-      const created = await mockRequest(legacy.addCompany(input));
-      set({ companies: legacy.getState() });
-      toast.success(`Company ${created.reference} added`);
+      const created = await customerService.create(payload);
+      toast.success(`Customer "${created.name}" added`);
+      await get().fetchCompanies();
       return created;
     } catch (e) {
       const err = toApiError(e);
@@ -49,24 +65,23 @@ export const useCompanyStore = create<CompanyState>((set) => ({
     }
   },
 
-  updateCompany: async (id, patch) => {
+  updateCompany: async (id, payload) => {
     try {
-      await mockRequest(true);
-      legacy.updateCompany(id, patch);
-      set({ companies: legacy.getState() });
+      await customerService.update(id, payload);
+      toast.success("Customer updated");
+      await get().fetchCompanies();
     } catch (e) {
       toast.error(toApiError(e).message);
     }
   },
 
-  setActive: (id) => {
-    legacy.setActive(id);
-    set({ activeId: id });
+  removeCompany: async (id) => {
+    try {
+      await customerService.remove(id);
+      set((s) => ({ companies: s.companies.filter((c) => c.id !== id) }));
+      toast("Customer removed");
+    } catch (e) {
+      toast.error(toApiError(e).message);
+    }
   },
 }));
-
-if (typeof window !== "undefined") {
-  legacy.subscribe(() =>
-    useCompanyStore.setState({ companies: legacy.getState(), activeId: legacy.getActiveId() }),
-  );
-}

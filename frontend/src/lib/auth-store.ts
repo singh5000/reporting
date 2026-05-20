@@ -69,12 +69,16 @@ export const authStore = {
   },
 
   login: async (email: string, password: string): Promise<LoginResponse> => {
+    // Reset to env default before login so stale localStorage slug doesn't poison the request
+    setActiveTenantSlug(
+      (import.meta as any).env?.VITE_DEFAULT_TENANT_SLUG ?? "demo-corp"
+    );
     const res = await authService.login(email, password);
     const { tokens: { accessToken, refreshToken }, user } = res.data;
 
     setAuthToken(accessToken);
     setRefreshToken(refreshToken);
-    setActiveTenantSlug(user.tenantId);
+    setActiveTenantSlug(res.data.tenantSlug || user.tenantId);
 
     state = { isAuthenticated: true, user: mapUser(user) };
     persist();
@@ -110,4 +114,25 @@ export function useAuth() {
     authStore.getState,
     () => ({ isAuthenticated: false, user: null }) as AuthState,
   );
+}
+
+/** Returns true if the current user has the given permission (e.g. "audit:create"). */
+export function usePermission(permission: string): boolean {
+  const { user } = useAuth();
+  if (!user) return false;
+  const perms = user.permissions ?? [];
+  // Super admin shortcut
+  if (perms.includes("*") || perms.includes("*:*")) return true;
+  return perms.includes(permission);
+}
+
+/** Returns a can() checker for multiple permission checks in one component. */
+export function usePermissions() {
+  const { user } = useAuth();
+  return (permission: string): boolean => {
+    if (!user) return false;
+    const perms = user.permissions ?? [];
+    if (perms.includes("*") || perms.includes("*:*")) return true;
+    return perms.includes(permission);
+  };
 }

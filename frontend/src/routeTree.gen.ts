@@ -12,12 +12,23 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWebhooksRouteImport } from './routes/_authenticated.webhooks'
+import { Route as AuthenticatedWasteRouteImport } from './routes/_authenticated.waste'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated.users'
+import { Route as AuthenticatedTrainingRouteImport } from './routes/_authenticated.training'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated.settings'
+import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated.roles'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated.reports'
+import { Route as AuthenticatedPpeRouteImport } from './routes/_authenticated.ppe'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated.notifications'
+import { Route as AuthenticatedInductionsRouteImport } from './routes/_authenticated.inductions'
 import { Route as AuthenticatedIncidentsRouteImport } from './routes/_authenticated.incidents'
 import { Route as AuthenticatedFacilitiesRouteImport } from './routes/_authenticated.facilities'
+import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated.documents'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedCompaniesRouteImport } from './routes/_authenticated.companies'
 import { Route as AuthenticatedAuditsRouteImport } from './routes/_authenticated.audits'
+import { Route as AuthenticatedAssetsRouteImport } from './routes/_authenticated.assets'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated.activity'
 import { Route as AuthenticatedIncidentsCreateRouteImport } from './routes/_authenticated.incidents.create'
 import { Route as AuthenticatedIncidentsIdRouteImport } from './routes/_authenticated.incidents.$id'
@@ -41,9 +52,55 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWebhooksRoute = AuthenticatedWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedWasteRoute = AuthenticatedWasteRouteImport.update({
+  id: '/waste',
+  path: '/waste',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedTrainingRoute = AuthenticatedTrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPpeRoute = AuthenticatedPpeRouteImport.update({
+  id: '/ppe',
+  path: '/ppe',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInductionsRoute = AuthenticatedInductionsRouteImport.update({
+  id: '/inductions',
+  path: '/inductions',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedIncidentsRoute = AuthenticatedIncidentsRouteImport.update({
@@ -54,6 +111,11 @@ const AuthenticatedIncidentsRoute = AuthenticatedIncidentsRouteImport.update({
 const AuthenticatedFacilitiesRoute = AuthenticatedFacilitiesRouteImport.update({
   id: '/facilities',
   path: '/facilities',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -69,6 +131,11 @@ const AuthenticatedCompaniesRoute = AuthenticatedCompaniesRouteImport.update({
 const AuthenticatedAuditsRoute = AuthenticatedAuditsRouteImport.update({
   id: '/audits',
   path: '/audits',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAssetsRoute = AuthenticatedAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
@@ -123,12 +190,23 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/activity': typeof AuthenticatedActivityRoute
+  '/assets': typeof AuthenticatedAssetsRoute
   '/audits': typeof AuthenticatedAuditsRouteWithChildren
   '/companies': typeof AuthenticatedCompaniesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/documents': typeof AuthenticatedDocumentsRoute
   '/facilities': typeof AuthenticatedFacilitiesRouteWithChildren
   '/incidents': typeof AuthenticatedIncidentsRouteWithChildren
+  '/inductions': typeof AuthenticatedInductionsRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
+  '/ppe': typeof AuthenticatedPpeRoute
+  '/reports': typeof AuthenticatedReportsRoute
+  '/roles': typeof AuthenticatedRolesRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/training': typeof AuthenticatedTrainingRoute
+  '/users': typeof AuthenticatedUsersRoute
+  '/waste': typeof AuthenticatedWasteRoute
+  '/webhooks': typeof AuthenticatedWebhooksRoute
   '/audits/create': typeof AuthenticatedAuditsCreateRoute
   '/companies/$id': typeof AuthenticatedCompaniesIdRoute
   '/companies/create': typeof AuthenticatedCompaniesCreateRoute
@@ -141,12 +219,23 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/activity': typeof AuthenticatedActivityRoute
+  '/assets': typeof AuthenticatedAssetsRoute
   '/audits': typeof AuthenticatedAuditsRouteWithChildren
   '/companies': typeof AuthenticatedCompaniesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/documents': typeof AuthenticatedDocumentsRoute
   '/facilities': typeof AuthenticatedFacilitiesRouteWithChildren
   '/incidents': typeof AuthenticatedIncidentsRouteWithChildren
+  '/inductions': typeof AuthenticatedInductionsRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
+  '/ppe': typeof AuthenticatedPpeRoute
+  '/reports': typeof AuthenticatedReportsRoute
+  '/roles': typeof AuthenticatedRolesRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/training': typeof AuthenticatedTrainingRoute
+  '/users': typeof AuthenticatedUsersRoute
+  '/waste': typeof AuthenticatedWasteRoute
+  '/webhooks': typeof AuthenticatedWebhooksRoute
   '/audits/create': typeof AuthenticatedAuditsCreateRoute
   '/companies/$id': typeof AuthenticatedCompaniesIdRoute
   '/companies/create': typeof AuthenticatedCompaniesCreateRoute
@@ -161,12 +250,23 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
+  '/_authenticated/assets': typeof AuthenticatedAssetsRoute
   '/_authenticated/audits': typeof AuthenticatedAuditsRouteWithChildren
   '/_authenticated/companies': typeof AuthenticatedCompaniesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
   '/_authenticated/facilities': typeof AuthenticatedFacilitiesRouteWithChildren
   '/_authenticated/incidents': typeof AuthenticatedIncidentsRouteWithChildren
+  '/_authenticated/inductions': typeof AuthenticatedInductionsRoute
+  '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
+  '/_authenticated/ppe': typeof AuthenticatedPpeRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRoute
+  '/_authenticated/roles': typeof AuthenticatedRolesRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/training': typeof AuthenticatedTrainingRoute
+  '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/waste': typeof AuthenticatedWasteRoute
+  '/_authenticated/webhooks': typeof AuthenticatedWebhooksRoute
   '/_authenticated/audits/create': typeof AuthenticatedAuditsCreateRoute
   '/_authenticated/companies/$id': typeof AuthenticatedCompaniesIdRoute
   '/_authenticated/companies/create': typeof AuthenticatedCompaniesCreateRoute
@@ -181,12 +281,23 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/activity'
+    | '/assets'
     | '/audits'
     | '/companies'
     | '/dashboard'
+    | '/documents'
     | '/facilities'
     | '/incidents'
+    | '/inductions'
+    | '/notifications'
+    | '/ppe'
+    | '/reports'
+    | '/roles'
     | '/settings'
+    | '/training'
+    | '/users'
+    | '/waste'
+    | '/webhooks'
     | '/audits/create'
     | '/companies/$id'
     | '/companies/create'
@@ -199,12 +310,23 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/activity'
+    | '/assets'
     | '/audits'
     | '/companies'
     | '/dashboard'
+    | '/documents'
     | '/facilities'
     | '/incidents'
+    | '/inductions'
+    | '/notifications'
+    | '/ppe'
+    | '/reports'
+    | '/roles'
     | '/settings'
+    | '/training'
+    | '/users'
+    | '/waste'
+    | '/webhooks'
     | '/audits/create'
     | '/companies/$id'
     | '/companies/create'
@@ -218,12 +340,23 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/activity'
+    | '/_authenticated/assets'
     | '/_authenticated/audits'
     | '/_authenticated/companies'
     | '/_authenticated/dashboard'
+    | '/_authenticated/documents'
     | '/_authenticated/facilities'
     | '/_authenticated/incidents'
+    | '/_authenticated/inductions'
+    | '/_authenticated/notifications'
+    | '/_authenticated/ppe'
+    | '/_authenticated/reports'
+    | '/_authenticated/roles'
     | '/_authenticated/settings'
+    | '/_authenticated/training'
+    | '/_authenticated/users'
+    | '/_authenticated/waste'
+    | '/_authenticated/webhooks'
     | '/_authenticated/audits/create'
     | '/_authenticated/companies/$id'
     | '/_authenticated/companies/create'
@@ -262,11 +395,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/webhooks': {
+      id: '/_authenticated/webhooks'
+      path: '/webhooks'
+      fullPath: '/webhooks'
+      preLoaderRoute: typeof AuthenticatedWebhooksRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/waste': {
+      id: '/_authenticated/waste'
+      path: '/waste'
+      fullPath: '/waste'
+      preLoaderRoute: typeof AuthenticatedWasteRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/training': {
+      id: '/_authenticated/training'
+      path: '/training'
+      fullPath: '/training'
+      preLoaderRoute: typeof AuthenticatedTrainingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/roles': {
+      id: '/_authenticated/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof AuthenticatedRolesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/ppe': {
+      id: '/_authenticated/ppe'
+      path: '/ppe'
+      fullPath: '/ppe'
+      preLoaderRoute: typeof AuthenticatedPpeRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/inductions': {
+      id: '/_authenticated/inductions'
+      path: '/inductions'
+      fullPath: '/inductions'
+      preLoaderRoute: typeof AuthenticatedInductionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/incidents': {
@@ -281,6 +477,13 @@ declare module '@tanstack/react-router' {
       path: '/facilities'
       fullPath: '/facilities'
       preLoaderRoute: typeof AuthenticatedFacilitiesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/documents': {
+      id: '/_authenticated/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AuthenticatedDocumentsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
@@ -302,6 +505,13 @@ declare module '@tanstack/react-router' {
       path: '/audits'
       fullPath: '/audits'
       preLoaderRoute: typeof AuthenticatedAuditsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/assets': {
+      id: '/_authenticated/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof AuthenticatedAssetsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/activity': {
@@ -424,22 +634,44 @@ const AuthenticatedIncidentsRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
+  AuthenticatedAssetsRoute: typeof AuthenticatedAssetsRoute
   AuthenticatedAuditsRoute: typeof AuthenticatedAuditsRouteWithChildren
   AuthenticatedCompaniesRoute: typeof AuthenticatedCompaniesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
   AuthenticatedFacilitiesRoute: typeof AuthenticatedFacilitiesRouteWithChildren
   AuthenticatedIncidentsRoute: typeof AuthenticatedIncidentsRouteWithChildren
+  AuthenticatedInductionsRoute: typeof AuthenticatedInductionsRoute
+  AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
+  AuthenticatedPpeRoute: typeof AuthenticatedPpeRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
+  AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedTrainingRoute: typeof AuthenticatedTrainingRoute
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedWasteRoute: typeof AuthenticatedWasteRoute
+  AuthenticatedWebhooksRoute: typeof AuthenticatedWebhooksRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedActivityRoute: AuthenticatedActivityRoute,
+  AuthenticatedAssetsRoute: AuthenticatedAssetsRoute,
   AuthenticatedAuditsRoute: AuthenticatedAuditsRouteWithChildren,
   AuthenticatedCompaniesRoute: AuthenticatedCompaniesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
   AuthenticatedFacilitiesRoute: AuthenticatedFacilitiesRouteWithChildren,
   AuthenticatedIncidentsRoute: AuthenticatedIncidentsRouteWithChildren,
+  AuthenticatedInductionsRoute: AuthenticatedInductionsRoute,
+  AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
+  AuthenticatedPpeRoute: AuthenticatedPpeRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
+  AuthenticatedRolesRoute: AuthenticatedRolesRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedTrainingRoute: AuthenticatedTrainingRoute,
+  AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedWasteRoute: AuthenticatedWasteRoute,
+  AuthenticatedWebhooksRoute: AuthenticatedWebhooksRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

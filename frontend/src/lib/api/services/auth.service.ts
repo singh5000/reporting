@@ -20,6 +20,7 @@ export interface LoginResponse {
     tokenType: string;
   };
   sessionId: string;
+  tenantSlug: string;
 }
 
 export interface MeResponse {

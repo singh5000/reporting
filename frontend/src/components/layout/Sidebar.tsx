@@ -2,31 +2,21 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ChevronsLeft, LogOut, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { APP_NAME, APP_TAGLINE, navItems } from "@/lib/constants";
+import { APP_NAME, APP_TAGLINE, navGroups } from "@/lib/constants";
 import { authStore } from "@/lib/auth-store";
 import { themeStore, useTheme } from "@/lib/theme-store";
-import { useRole } from "@/lib/role-store";
-import { canAccessResource, type Resource } from "@/lib/rbac";
-
-const navResourceMap: Record<string, Resource> = {
-  "/audits": "audits",
-  "/incidents": "incidents",
-  "/facilities": "facilities",
-  "/companies": "companies",
-  "/settings": "settings",
-};
+import { useAuth } from "@/lib/auth-store";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const theme = useTheme();
-  const role = useRole();
-  const visibleNav = navItems.filter((item) => {
-    const resource = navResourceMap[item.to];
-    if (!resource) return true;
-    return canAccessResource(role, resource);
-  });
+  const { user } = useAuth();
+
+  const permissions = user?.permissions ?? [];
+  const canSee = (permission?: string) =>
+    !permission || permissions.includes(permission) || permissions.includes("*");
 
   const handleLogout = () => {
     authStore.logout();
@@ -36,19 +26,20 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 md:flex",
-        collapsed ? "w-[72px]" : "w-[260px]",
+        "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 md:flex overflow-y-auto",
+        collapsed ? "w-[72px]" : "w-[240px]",
       )}
     >
-      <div className="flex h-16 items-center justify-between px-4">
+      {/* Logo */}
+      <div className="flex h-14 shrink-0 items-center justify-between px-4">
         <Link to="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl [background:var(--gradient-primary)]">
-            <ShieldCheck className="h-5 w-5 text-primary-foreground" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [background:var(--gradient-primary)]">
+            <ShieldCheck className="h-4.5 w-4.5 text-primary-foreground" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold tracking-tight">{APP_NAME}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{APP_TAGLINE}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{APP_TAGLINE}</p>
             </div>
           )}
         </Link>
@@ -56,57 +47,80 @@ export function Sidebar() {
           type="button"
           onClick={() => setCollapsed((c) => !c)}
           className={cn(
-            "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
-            collapsed && "absolute right-[-12px] top-5 h-6 w-6 border border-sidebar-border bg-sidebar",
+            "flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
+            collapsed && "absolute right-[-12px] top-4 border border-sidebar-border bg-sidebar",
           )}
           aria-label="Toggle sidebar"
         >
-          <ChevronsLeft className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
+          <ChevronsLeft className={cn("h-3.5 w-3.5 transition-transform", collapsed && "rotate-180")} />
         </button>
       </div>
 
-      <nav className="flex-1 space-y-0.5 px-3 py-3">
-        {!collapsed && (
-          <p className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Workspace
-          </p>
-        )}
-        {visibleNav.map((item) => {
-          const active = pathname === item.to || (item.to !== "/dashboard" && pathname.startsWith(item.to));
+      {/* Nav groups */}
+      <nav className="flex-1 space-y-4 px-3 py-2">
+        {navGroups.map((group) => {
+          const visible = group.items.filter((item) => canSee(item.permission));
+          if (visible.length === 0) return null;
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                active
-                  ? "bg-sidebar-accent text-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                collapsed && "justify-center px-0",
+            <div key={group.label}>
+              {!collapsed && (
+                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  {group.label}
+                </p>
               )}
-            >
-              {active && (
-                <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
-              )}
-              <item.icon className="h-[18px] w-[18px] shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
+              <div className="space-y-0.5">
+                {visible.map((item) => {
+                  const active = pathname === item.to || (item.to !== "/dashboard" && pathname.startsWith(item.to));
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to as any}
+                      className={cn(
+                        "group relative flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
+                        active
+                          ? "bg-sidebar-accent text-foreground"
+                          : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                        collapsed && "justify-center px-0",
+                      )}
+                    >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
+                      )}
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
 
-      <div className={cn("space-y-2 border-t border-sidebar-border p-3", collapsed && "px-2")}>
+      {/* Footer */}
+      <div className={cn("shrink-0 space-y-1.5 border-t border-sidebar-border p-3", collapsed && "px-2")}>
+        {!collapsed && user && (
+          <div className="flex items-center gap-2.5 rounded-lg px-3 py-2">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              {user.name?.[0]?.toUpperCase() ?? "U"}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-foreground">{user.name}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+        )}
         <ThemeToggle collapsed={collapsed} theme={theme} onToggle={() => themeStore.toggle()} />
         <button
           type="button"
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
+            "flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground",
             collapsed && "justify-center px-0",
           )}
           aria-label="Sign out"
         >
-          <LogOut className="h-[18px] w-[18px] shrink-0" />
+          <LogOut className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Sign out</span>}
         </button>
       </div>
@@ -128,48 +142,38 @@ function ThemeToggle({
       <button
         type="button"
         onClick={onToggle}
-        className="flex h-9 w-full items-center justify-center rounded-lg border border-sidebar-border text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+        className="flex h-8 w-full items-center justify-center rounded-lg border border-sidebar-border text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
         aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
       >
-        {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+        {theme === "dark" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
       </button>
     );
   }
 
   return (
     <div
-      className="flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-1"
+      className="flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-0.5"
       role="radiogroup"
       aria-label="Theme"
     >
-      <button
-        type="button"
-        role="radio"
-        aria-checked={theme === "light"}
-        onClick={() => theme !== "light" && onToggle()}
-        className={cn(
-          "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
-          theme === "light"
-            ? "bg-card text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <Sun className="h-3.5 w-3.5" /> Light
-      </button>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={theme === "dark"}
-        onClick={() => theme !== "dark" && onToggle()}
-        className={cn(
-          "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
-          theme === "dark"
-            ? "bg-card text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <Moon className="h-3.5 w-3.5" /> Dark
-      </button>
+      {(["light", "dark"] as const).map((t) => (
+        <button
+          key={t}
+          type="button"
+          role="radio"
+          aria-checked={theme === t}
+          onClick={() => theme !== t && onToggle()}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all",
+            theme === t
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {t === "light" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+          {t.charAt(0).toUpperCase() + t.slice(1)}
+        </button>
+      ))}
     </div>
   );
 }

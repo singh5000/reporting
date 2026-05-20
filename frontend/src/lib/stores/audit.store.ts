@@ -1,44 +1,62 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { mockRequest } from "@/lib/api/api-client";
-import { auditStore as legacy } from "@/lib/audit-store";
-import type { Audit, AuditStatus } from "@/lib/types/audit.types";
+import { auditService, type Audit, type ListAuditsParams, type CreateAuditPayload } from "@/lib/api/services/audit.service";
 import type { ApiError } from "@/lib/types/api.types";
 import { toApiError } from "./_helpers";
 
+export type { Audit } from "@/lib/api/services/audit.service";
+
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 type AuditState = {
   audits: Audit[];
+  meta: PaginationMeta | null;
   loading: boolean;
   error: ApiError | null;
   initialized: boolean;
-  fetchAudits: () => Promise<void>;
-  createAudit: (input: Omit<Audit, "id" | "reference" | "createdAt" | "status"> & { status?: AuditStatus }) => Promise<Audit>;
-  updateAudit: (id: string, patch: Partial<Audit>) => Promise<void>;
+  params: ListAuditsParams;
+  fetchAudits: (params?: ListAuditsParams) => Promise<void>;
+  createAudit: (payload: CreateAuditPayload) => Promise<Audit>;
+  updateAudit: (id: string, payload: Partial<CreateAuditPayload>) => Promise<void>;
   removeAudit: (id: string) => Promise<void>;
+  setParams: (params: Partial<ListAuditsParams>) => void;
 };
 
 export const useAuditStore = create<AuditState>((set, get) => ({
-  audits: legacy.getState(),
+  audits: [],
+  meta: null,
   loading: false,
   error: null,
   initialized: false,
+  params: { page: 1, limit: 20, sortBy: "createdAt", sortOrder: "desc" },
 
-  fetchAudits: async () => {
-    set({ loading: true, error: null });
+  setParams: (params) => {
+    set((s) => ({ params: { ...s.params, ...params } }));
+  },
+
+  fetchAudits: async (params) => {
+    const merged = { ...get().params, ...params };
+    set({ loading: true, error: null, params: merged });
     try {
-      const data = await mockRequest(legacy.getState());
-      set({ audits: data, loading: false, initialized: true });
+      const res = await auditService.list(merged);
+      set({ audits: res.data, meta: res.meta, loading: false, initialized: true });
     } catch (e) {
-      set({ loading: false, error: toApiError(e) });
+      const err = toApiError(e);
+      set({ loading: false, error: err });
       toast.error("Failed to load audits");
     }
   },
 
-  createAudit: async (input) => {
+  createAudit: async (payload) => {
     try {
-      const created = await mockRequest(legacy.addAudit(input));
-      set({ audits: legacy.getState() });
-      toast.success(`Audit ${created.reference} created`);
+      const created = await auditService.create(payload);
+      toast.success(`Audit ${created.refNumber} created`);
+      await get().fetchAudits();
       return created;
     } catch (e) {
       const err = toApiError(e);
@@ -48,34 +66,25 @@ export const useAuditStore = create<AuditState>((set, get) => ({
     }
   },
 
-  updateAudit: async (id, patch) => {
+  updateAudit: async (id, payload) => {
     try {
-      await mockRequest(true);
-      legacy.updateAudit(id, patch);
-      set({ audits: legacy.getState() });
+      await auditService.update(id, payload);
+      toast.success("Audit updated");
+      await get().fetchAudits();
     } catch (e) {
       const err = toApiError(e);
       toast.error(err.message);
       set({ error: err });
     }
-    void get;
   },
 
   removeAudit: async (id) => {
     try {
-      await mockRequest(true);
-      legacy.removeAudit(id);
-      set({ audits: legacy.getState() });
+      await auditService.remove(id);
+      set((s) => ({ audits: s.audits.filter((a) => a.id !== id) }));
       toast("Audit removed");
     } catch (e) {
       toast.error(toApiError(e).message);
     }
   },
 }));
-
-// Bridge legacy store mutations into Zustand for components still using useAudits()
-if (typeof window !== "undefined") {
-  legacy.subscribe(() => {
-    useAuditStore.setState({ audits: legacy.getState() });
-  });
-}

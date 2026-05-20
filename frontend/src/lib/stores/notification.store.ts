@@ -1,65 +1,78 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { mockRequest } from "@/lib/api/api-client";
-import { notificationStore as legacy, type Notification } from "@/lib/notification-store";
+import { notificationService, type Notification } from "@/lib/api/services/notification.service";
 import type { ApiError } from "@/lib/types/api.types";
 import { toApiError } from "./_helpers";
 
+export type { Notification } from "@/lib/api/services/notification.service";
+
 type NotificationState = {
   notifications: Notification[];
+  unreadCount: number;
   loading: boolean;
   error: ApiError | null;
-  unreadCount: number;
   fetchNotifications: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
-  clearAll: () => Promise<void>;
+  remove: (id: string) => Promise<void>;
 };
 
-const computeUnread = (n: Notification[]) => n.filter((x) => !x.read).length;
-
-export const useNotificationStore = create<NotificationState>((set) => ({
-  notifications: legacy.getSnapshot(),
-  unreadCount: computeUnread(legacy.getSnapshot()),
+export const useNotificationStore = create<NotificationState>((set, get) => ({
+  notifications: [],
+  unreadCount: 0,
   loading: false,
   error: null,
 
   fetchNotifications: async () => {
     set({ loading: true, error: null });
     try {
-      const data = await mockRequest(legacy.getSnapshot());
-      set({ notifications: data, unreadCount: computeUnread(data), loading: false });
+      const res = await notificationService.list({ limit: 30 });
+      set({
+        notifications: res.data,
+        unreadCount: res.unreadCount ?? res.data.filter((n) => !n.readAt).length,
+        loading: false,
+      });
     } catch (e) {
       set({ loading: false, error: toApiError(e) });
     }
   },
 
   markRead: async (id) => {
-    legacy.markRead(id);
-    set({ notifications: legacy.getSnapshot(), unreadCount: computeUnread(legacy.getSnapshot()) });
+    try {
+      await notificationService.markRead(id);
+      set((s) => ({
+        notifications: s.notifications.map((n) =>
+          n.id === id ? { ...n, readAt: new Date().toISOString(), status: "READ" } : n
+        ),
+        unreadCount: Math.max(0, s.unreadCount - 1),
+      }));
+    } catch (e) {
+      toast.error(toApiError(e).message);
+    }
   },
 
   markAllRead: async () => {
-    legacy.markAllRead();
-    set({ notifications: legacy.getSnapshot(), unreadCount: 0 });
-    toast("All notifications marked as read");
+    try {
+      await notificationService.markAllRead();
+      set((s) => ({
+        notifications: s.notifications.map((n) => ({ ...n, readAt: new Date().toISOString(), status: "READ" })),
+        unreadCount: 0,
+      }));
+      toast("All notifications marked as read");
+    } catch (e) {
+      toast.error(toApiError(e).message);
+    }
   },
 
-  clearAll: async () => {
+  remove: async (id) => {
     try {
-      await mockRequest(true);
-      legacy.clearAll();
-      set({ notifications: [], unreadCount: 0 });
-      toast("Notifications cleared");
+      await notificationService.remove(id);
+      set((s) => ({
+        notifications: s.notifications.filter((n) => n.id !== id),
+        unreadCount: s.notifications.find((n) => n.id === id && !n.readAt) ? s.unreadCount - 1 : s.unreadCount,
+      }));
     } catch (e) {
       toast.error(toApiError(e).message);
     }
   },
 }));
-
-if (typeof window !== "undefined") {
-  legacy.subscribe(() => {
-    const data = legacy.getSnapshot();
-    useNotificationStore.setState({ notifications: data, unreadCount: computeUnread(data) });
-  });
-}

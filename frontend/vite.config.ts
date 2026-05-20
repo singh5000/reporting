@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import react from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import type { ConfigEnv, Plugin } from "vite";
+import type { ConfigEnv, PluginOption } from "vite";
 
 export default defineConfig(async ({ command, mode }: ConfigEnv) => {
   const loadedEnv = loadEnv(mode, process.cwd(), "VITE_");
@@ -12,7 +12,7 @@ export default defineConfig(async ({ command, mode }: ConfigEnv) => {
     envDefine[`import.meta.env.${key}`] = JSON.stringify(value);
   }
 
-  const plugins: Plugin[] = [
+  const plugins: PluginOption[] = [
     tailwindcss(),
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart({

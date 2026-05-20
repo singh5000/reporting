@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, RefreshCw } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ActivityFilters } from "@/components/activity/ActivityFilters";
 import { ActivityTable } from "@/components/activity/ActivityTable";
 import { ActivityTimeline } from "@/components/activity/ActivityTimeline";
 import { ActivityDetailsDrawer } from "@/components/activity/ActivityDetailsDrawer";
-import { filterLogs, useActivityLogs } from "@/lib/activity.store";
+import { useActivityStore } from "@/lib/stores/activity.store";
+import { filterLogs } from "@/lib/activity.store";
 import type { ActivityFilters as Filters, ActivityLog } from "@/lib/activity.types";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/activity")({
@@ -31,10 +33,14 @@ const DEFAULT_FILTERS: Filters = {
 };
 
 function ActivityPage() {
-  const logs = useActivityLogs();
+  const { logs, loading, initialized, fetchLogs } = useActivityStore();
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [view, setView] = useState<"table" | "timeline">("table");
   const [selected, setSelected] = useState<ActivityLog | null>(null);
+
+  useEffect(() => {
+    if (!initialized) fetchLogs();
+  }, [initialized, fetchLogs]);
 
   const filtered = useMemo(() => filterLogs(logs, filters), [logs, filters]);
 
@@ -48,9 +54,14 @@ function ActivityPage() {
               Centralized audit trail across every module · {filtered.length} of {logs.length} events
             </p>
           </div>
-          <div className="inline-flex rounded-xl border border-border/70 bg-card/40 p-1">
-            <ViewBtn active={view === "table"} onClick={() => setView("table")} icon={List} label="Table" />
-            <ViewBtn active={view === "timeline"} onClick={() => setView("timeline")} icon={LayoutGrid} label="Timeline" />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => fetchLogs()} disabled={loading}>
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            </Button>
+            <div className="inline-flex rounded-xl border border-border/70 bg-card/40 p-1">
+              <ViewBtn active={view === "table"} onClick={() => setView("table")} icon={List} label="Table" />
+              <ViewBtn active={view === "timeline"} onClick={() => setView("timeline")} icon={LayoutGrid} label="Timeline" />
+            </div>
           </div>
         </div>
 

@@ -1,45 +1,62 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { mockRequest } from "@/lib/api/api-client";
-import { facilityStore as legacy } from "@/lib/facility-store";
-import type { Facility, MaintenanceLogEntry } from "@/lib/types/facility.types";
+import { siteService, type Site, type ListSitesParams, type CreateSitePayload } from "@/lib/api/services/site.service";
 import type { ApiError } from "@/lib/types/api.types";
 import { toApiError } from "./_helpers";
 
+export type { Site } from "@/lib/api/services/site.service";
+
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 type FacilityState = {
-  facilities: Facility[];
+  facilities: Site[];
+  meta: PaginationMeta | null;
   loading: boolean;
   error: ApiError | null;
   initialized: boolean;
-  fetchFacilities: () => Promise<void>;
-  createFacility: (input: Omit<Facility, "id" | "reference" | "createdAt" | "lastMaintenance" | "logs">) => Promise<Facility>;
-  updateFacility: (id: string, patch: Partial<Facility>) => Promise<void>;
-  addMaintenance: (id: string, log: Omit<MaintenanceLogEntry, "id">) => Promise<void>;
+  params: ListSitesParams;
+  fetchFacilities: (params?: ListSitesParams) => Promise<void>;
+  createFacility: (payload: CreateSitePayload) => Promise<Site>;
+  updateFacility: (id: string, payload: Partial<CreateSitePayload>) => Promise<void>;
   removeFacility: (id: string) => Promise<void>;
+  setParams: (params: Partial<ListSitesParams>) => void;
 };
 
-export const useFacilityStore = create<FacilityState>((set) => ({
-  facilities: legacy.getState(),
+export const useFacilityStore = create<FacilityState>((set, get) => ({
+  facilities: [],
+  meta: null,
   loading: false,
   error: null,
   initialized: false,
+  params: { page: 1, limit: 20, sortBy: "name", sortOrder: "asc" },
 
-  fetchFacilities: async () => {
-    set({ loading: true, error: null });
+  setParams: (params) => {
+    set((s) => ({ params: { ...s.params, ...params } }));
+  },
+
+  fetchFacilities: async (params) => {
+    const merged = { ...get().params, ...params };
+    set({ loading: true, error: null, params: merged });
     try {
-      const data = await mockRequest(legacy.getState());
-      set({ facilities: data, loading: false, initialized: true });
+      const res = await siteService.list(merged);
+      set({ facilities: res.data, meta: res.meta, loading: false, initialized: true });
     } catch (e) {
-      set({ loading: false, error: toApiError(e) });
-      toast.error("Failed to load facilities");
+      const err = toApiError(e);
+      set({ loading: false, error: err });
+      toast.error("Failed to load sites");
     }
   },
 
-  createFacility: async (input) => {
+  createFacility: async (payload) => {
     try {
-      const created = await mockRequest(legacy.addFacility(input));
-      set({ facilities: legacy.getState() });
-      toast.success(`Facility ${created.reference} added`);
+      const created = await siteService.create(payload);
+      toast.success(`Site "${created.name}" added`);
+      await get().fetchFacilities();
       return created;
     } catch (e) {
       const err = toApiError(e);
@@ -48,22 +65,11 @@ export const useFacilityStore = create<FacilityState>((set) => ({
     }
   },
 
-  updateFacility: async (id, patch) => {
+  updateFacility: async (id, payload) => {
     try {
-      await mockRequest(true);
-      legacy.updateFacility(id, patch);
-      set({ facilities: legacy.getState() });
-    } catch (e) {
-      toast.error(toApiError(e).message);
-    }
-  },
-
-  addMaintenance: async (id, log) => {
-    try {
-      await mockRequest(true);
-      legacy.addMaintenanceLog(id, log);
-      set({ facilities: legacy.getState() });
-      toast.success("Maintenance log added");
+      await siteService.update(id, payload);
+      toast.success("Site updated");
+      await get().fetchFacilities();
     } catch (e) {
       toast.error(toApiError(e).message);
     }
@@ -71,16 +77,11 @@ export const useFacilityStore = create<FacilityState>((set) => ({
 
   removeFacility: async (id) => {
     try {
-      await mockRequest(true);
-      legacy.removeFacility(id);
-      set({ facilities: legacy.getState() });
-      toast("Facility removed");
+      await siteService.remove(id);
+      set((s) => ({ facilities: s.facilities.filter((f) => f.id !== id) }));
+      toast("Site removed");
     } catch (e) {
       toast.error(toApiError(e).message);
     }
   },
 }));
-
-if (typeof window !== "undefined") {
-  legacy.subscribe(() => useFacilityStore.setState({ facilities: legacy.getState() }));
-}
