@@ -231,6 +231,51 @@ export default async function auditRoutes(fastify: FastifyInstance) {
     return reply.status(201).send({ success: true, data: audit });
   });
 
+  fastify.get("/stats", { preHandler: [authorize("audit:read")] }, async (req, reply) => {
+    const r = req as any;
+    const now = new Date();
+
+    const baseWhere: any = { deletedAt: null };
+    if (r.userType === "STAFF") baseWhere.assignedToId = r.userId;
+    if (r.userType === "MANAGER") {
+      const userSites = await userRepo.getUserSites(r.userId);
+      baseWhere.siteId = { in: userSites.map((s: any) => s.siteId) };
+    }
+
+    const [total, completed, overdue, byStatusRaw, byTypeRaw, avgAgg] = await Promise.all([
+      prisma.audit.count({ where: baseWhere }),
+      prisma.audit.count({ where: { ...baseWhere, status: "COMPLETED" } }),
+      prisma.audit.count({
+        where: {
+          ...baseWhere,
+          dueDate: { lt: now },
+          status: { notIn: ["COMPLETED", "REVIEWED", "ARCHIVED"] },
+        },
+      }),
+      prisma.audit.groupBy({ by: ["status"], where: baseWhere, _count: true }),
+      prisma.audit.groupBy({ by: ["type"], where: baseWhere, _count: true }),
+      prisma.audit.aggregate({
+        where: { ...baseWhere, percentage: { not: null } },
+        _avg: { percentage: true },
+      }),
+    ]);
+
+    const byStatus = byStatusRaw.reduce((a: any, r) => { a[r.status] = r._count; return a; }, {});
+    const byType   = byTypeRaw.reduce((a: any, r) => { a[r.type] = r._count; return a; }, {});
+
+    return reply.send({
+      success: true,
+      data: {
+        total,
+        completed,
+        overdue,
+        avgScore: Math.round((avgAgg._avg.percentage ?? 0) * 100) / 100,
+        byStatus,
+        byType,
+      },
+    });
+  });
+
   fastify.get("/:id", { preHandler: [authorize("audit:read")] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const r = req as any;

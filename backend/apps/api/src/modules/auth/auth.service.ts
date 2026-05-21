@@ -347,15 +347,19 @@ export class AuthService {
       payload: { sessionId: session.id, ipAddress: meta.ipAddress },
     });
 
-    const permissions: string[] = [
-      ...new Set<string>(
-        user.roles.flatMap((ur: any) =>
-          ur.role.permissions.map((rp: any) =>
-            `${rp.permission.resource}:${rp.permission.action}`
-          )
-        )
-      ),
-    ];
+    // Super admins get a wildcard — no need to enumerate every permission
+    const permissions: string[] =
+      user.type === "SUPER_ADMIN"
+        ? ["*"]
+        : [
+            ...new Set<string>(
+              user.roles.flatMap((ur: any) =>
+                ur.role.permissions.map((rp: any) =>
+                  `${rp.permission.resource}:${rp.permission.action}`
+                )
+              )
+            ),
+          ];
     const safeUser = this.toSafeUser(user, roles, permissions);
 
     return {

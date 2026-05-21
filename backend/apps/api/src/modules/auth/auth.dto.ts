@@ -42,6 +42,7 @@ export const ForgotPasswordDto = z.object({
 
 // ── Reset Password ─────────────────────────────────────────────────────────
 export const ResetPasswordDto = z.object({
+  email: z.string().email().toLowerCase().trim(),
   token: z.string().min(1),
   newPassword: z
     .string()

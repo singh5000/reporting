@@ -104,9 +104,7 @@ export class AuthController {
     if (!body.success) throw new ValidationError("Invalid input", body.error.errors);
 
     const tenantId = (request as any).tenantId;
-    const { email } = request.query as { email: string };
-
-    await authService.resetPassword(tenantId, email, body.data.token, body.data.newPassword);
+    await authService.resetPassword(tenantId, body.data.email, body.data.token, body.data.newPassword);
 
     return reply.status(200).send({ success: true, message: "Password reset successfully" });
   }
