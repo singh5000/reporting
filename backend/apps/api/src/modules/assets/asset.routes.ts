@@ -10,6 +10,7 @@ const auditLog = new AuditLogService();
 
 const CreateAssetDto = z.object({
   siteId: z.string().optional(),
+  customerId: z.string().optional(),
   name: z.string().min(1).max(300).trim(),
   assetTag: z.string().optional(),
   category: z.string().min(1),
@@ -35,6 +36,7 @@ const ListAssetDto = z.object({
   status: z.string().optional(),
   category: z.string().optional(),
   siteId: z.string().optional(),
+  customerId: z.string().optional(),
   search: z.string().optional(),
   serviceOverdue: z.coerce.boolean().optional(),
 });
@@ -45,12 +47,21 @@ export default async function assetRoutes(fastify: FastifyInstance) {
   // ── Stats ──────────────────────────────────────────────────────────────────
   fastify.get("/stats", { preHandler: [authorize("asset:read")] }, async (req, reply) => {
     const r = req as any;
+    const { customerId } = req.query as any;
+
+    let siteFilter: any = {};
+    if (customerId) {
+      const customerSites = await prisma.site.findMany({ where: { tenantId: r.tenantId, customerId }, select: { id: true } });
+      siteFilter = { siteId: { in: customerSites.map((s: any) => s.id) } };
+    }
+
+    const base = { tenantId: r.tenantId, deletedAt: null, ...siteFilter };
     const [total, byStatus, byCondition, serviceOverdue] = await Promise.all([
-      prisma.asset.count({ where: { tenantId: r.tenantId, deletedAt: null } }),
-      prisma.asset.groupBy({ by: ["status"], where: { tenantId: r.tenantId, deletedAt: null }, _count: true }),
-      prisma.asset.groupBy({ by: ["condition"], where: { tenantId: r.tenantId, deletedAt: null }, _count: true }),
+      prisma.asset.count({ where: base }),
+      prisma.asset.groupBy({ by: ["status"], where: base, _count: true }),
+      prisma.asset.groupBy({ by: ["condition"], where: base, _count: true }),
       prisma.asset.count({
-        where: { tenantId: r.tenantId, deletedAt: null, nextServiceDate: { lt: new Date() }, status: { not: "DECOMMISSIONED" as any } },
+        where: { ...base, nextServiceDate: { lt: new Date() }, status: { not: "DECOMMISSIONED" as any } },
       }),
     ]);
     return reply.send({
@@ -70,13 +81,20 @@ export default async function assetRoutes(fastify: FastifyInstance) {
     const q = ListAssetDto.safeParse(req.query);
     if (!q.success) throw new ValidationError("Invalid query", q.error.errors);
     const { page, limit, status, category, siteId, search, serviceOverdue } = q.data;
+    const customerId = q.data.customerId ?? (r.userType === "CUSTOMER" ? r.customerId : undefined);
+
+    let siteFilter: any = siteId ? { siteId } : {};
+    if (customerId && !siteId) {
+      const customerSites = await prisma.site.findMany({ where: { tenantId: r.tenantId, customerId }, select: { id: true } });
+      siteFilter = { siteId: { in: customerSites.map((s: any) => s.id) } };
+    }
 
     const where: any = {
       tenantId: r.tenantId,
       deletedAt: null,
+      ...siteFilter,
       ...(status && { status }),
       ...(category && { category }),
-      ...(siteId && { siteId }),
       ...(serviceOverdue && { nextServiceDate: { lt: new Date() } }),
       ...(search && {
         OR: [
@@ -93,7 +111,7 @@ export default async function assetRoutes(fastify: FastifyInstance) {
         where, skip: (page - 1) * limit, take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          site: { select: { id: true, name: true } },
+          site: { select: { id: true, name: true, customerId: true, customer: { select: { id: true, name: true } } } },
           assignments: {
             where: { returnedAt: null },
             include: { user: { select: { id: true, firstName: true, lastName: true } } },

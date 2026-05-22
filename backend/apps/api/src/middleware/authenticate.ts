@@ -51,6 +51,7 @@ export async function authenticate(
   (request as any).tenantId = payload.tid;
   (request as any).tenantSlug = payload.tsl;
   (request as any).sessionId = payload.sid;
+  (request as any).customerId = payload.cid ?? null;
   (request as any).userType = payload.typ;
   (request as any).roles = payload.roles;
   (request as any).permissions = permissions;

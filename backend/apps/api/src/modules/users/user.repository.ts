@@ -3,7 +3,7 @@ import type { CreateUserDtoType, ListUsersDtoType } from "./user.dto";
 import type { PaginatedResult } from "@360crd/shared-types";
 
 const USER_SELECT = {
-  id: true, tenantId: true, email: true, firstName: true, lastName: true,
+  id: true, tenantId: true, customerId: true, email: true, firstName: true, lastName: true,
   avatarUrl: true, type: true, status: true, department: true, jobTitle: true,
   employeeId: true, phone: true, emailVerified: true, mfaEnabled: true,
   lastLoginAt: true, lastLoginIp: true, mustChangePassword: true,
@@ -15,6 +15,7 @@ export class UserRepository {
     return prisma.user.create({
       data: {
         tenantId,
+        customerId: data.customerId,
         email: data.email,
         passwordHash,
         firstName: data.firstName,

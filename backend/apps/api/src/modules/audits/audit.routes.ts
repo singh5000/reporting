@@ -151,10 +151,16 @@ export default async function auditRoutes(fastify: FastifyInstance) {
     const query = ListAuditsDto.safeParse(req.query);
     if (!query.success) throw new ValidationError("Invalid query", query.error.errors);
 
+    // Customer users only see their own company data
+    if (r.userType === "CUSTOMER" && r.customerId) {
+      (query.data as any).customerId = r.customerId;
+    }
+
     const where: any = {
       deletedAt: null,
       ...(query.data.status && { status: query.data.status }),
       ...(query.data.siteId && { siteId: query.data.siteId }),
+      ...(query.data.customerId && { customerId: query.data.customerId }),
       ...(query.data.type && { type: query.data.type }),
       ...(query.data.assignedToId && { assignedToId: query.data.assignedToId }),
       ...(query.data.fromDate && { createdAt: { gte: new Date(query.data.fromDate) } }),
@@ -185,6 +191,7 @@ export default async function auditRoutes(fastify: FastifyInstance) {
         include: {
           assignedTo: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
           site: { select: { id: true, name: true } },
+          customer: { select: { id: true, name: true } },
           template: { select: { id: true, name: true } },
           _count: { select: { responses: true, auditFindings: true } },
         },

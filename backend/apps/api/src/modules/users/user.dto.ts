@@ -10,6 +10,7 @@ export const CreateUserDto = z.object({
   jobTitle: z.string().optional(),
   employeeId: z.string().optional(),
   type: z.enum(["TENANT_ADMIN", "MANAGER", "STAFF", "CUSTOMER"]).default("STAFF"),
+  customerId: z.string().optional(),
   roles: z.array(z.string()).default([]),
   siteIds: z.array(z.string()).optional(),
   sendWelcomeEmail: z.boolean().default(true),
@@ -24,6 +25,7 @@ export const UpdateUserDto = z.object({
   jobTitle: z.string().optional(),
   employeeId: z.string().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]).optional(),
+  customerId: z.string().nullable().optional(),
   avatarUrl: z.string().url().optional(),
   metadata: z.record(z.unknown()).optional(),
 });

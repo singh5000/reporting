@@ -147,6 +147,8 @@ model User {
   id                  String     @id @default(cuid())
   tenantId            String
   tenant              Tenant     @relation(fields: [tenantId], references: [id])
+  customerId          String?
+  customer            Customer?  @relation(fields: [customerId], references: [id])
   email               String
   emailVerified       Boolean    @default(false)
   emailVerifiedAt     DateTime?
@@ -413,6 +415,7 @@ model Customer {
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
 
+  users     User[]
   sites     Site[]
   incidents Incident[]
   audits    Audit[]

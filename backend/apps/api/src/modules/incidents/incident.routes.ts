@@ -36,6 +36,11 @@ export default async function incidentRoutes(fastify: FastifyInstance) {
     const query = ListIncidentsDto.safeParse(req.query);
     if (!query.success) throw new ValidationError("Invalid query", query.error.errors);
 
+    // Customer users only see their own company data
+    if (r.userType === "CUSTOMER" && r.customerId) {
+      (query.data as any).customerId = r.customerId;
+    }
+
     // Managers + Staff only see incidents from their assigned sites
     let restrictToSiteIds: string[] | undefined;
     if (!r.isSuperAdmin && ["MANAGER", "STAFF"].includes(r.userType)) {

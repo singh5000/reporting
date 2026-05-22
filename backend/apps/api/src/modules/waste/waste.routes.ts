@@ -10,6 +10,7 @@ const auditLog = new AuditLogService();
 
 const CreateWasteDto = z.object({
   siteId: z.string().optional(),
+  customerId: z.string().optional(),
   category: z.string().min(1),
   type: z.string().optional(),
   description: z.string().optional(),
@@ -30,6 +31,7 @@ const ListWasteDto = z.object({
   status: z.string().optional(),
   category: z.string().optional(),
   siteId: z.string().optional(),
+  customerId: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   search: z.string().optional(),
@@ -41,10 +43,17 @@ export default async function wasteRoutes(fastify: FastifyInstance) {
   // ── Stats ──────────────────────────────────────────────────────────────────
   fastify.get("/stats", { preHandler: [authorize("waste:read")] }, async (req, reply) => {
     const r = req as any;
-    const { dateFrom, dateTo } = req.query as any;
+    const { dateFrom, dateTo, customerId } = req.query as any;
+
+    let siteFilter: any = {};
+    if (customerId) {
+      const customerSites = await prisma.site.findMany({ where: { tenantId: r.tenantId, customerId }, select: { id: true } });
+      siteFilter = { siteId: { in: customerSites.map((s: any) => s.id) } };
+    }
 
     const where: any = {
       tenantId: r.tenantId,
+      ...siteFilter,
       ...(dateFrom || dateTo
         ? { disposedAt: { ...(dateFrom && { gte: new Date(dateFrom) }), ...(dateTo && { lte: new Date(dateTo) }) } }
         : {}),
@@ -75,12 +84,19 @@ export default async function wasteRoutes(fastify: FastifyInstance) {
     const q = ListWasteDto.safeParse(req.query);
     if (!q.success) throw new ValidationError("Invalid query", q.error.errors);
     const { page, limit, status, category, siteId, dateFrom, dateTo, search } = q.data;
+    const customerId = q.data.customerId ?? (r.userType === "CUSTOMER" ? r.customerId : undefined);
+
+    let siteFilter: any = siteId ? { siteId } : {};
+    if (customerId && !siteId) {
+      const customerSites = await prisma.site.findMany({ where: { tenantId: r.tenantId, customerId }, select: { id: true } });
+      siteFilter = { siteId: { in: customerSites.map((s: any) => s.id) } };
+    }
 
     const where: any = {
       tenantId: r.tenantId,
+      ...siteFilter,
       ...(status && { status }),
       ...(category && { category }),
-      ...(siteId && { siteId }),
       ...(dateFrom || dateTo
         ? { disposedAt: { ...(dateFrom && { gte: new Date(dateFrom) }), ...(dateTo && { lte: new Date(dateTo) }) } }
         : {}),
@@ -99,7 +115,7 @@ export default async function wasteRoutes(fastify: FastifyInstance) {
       prisma.wasteRecord.findMany({
         where, skip: (page - 1) * limit, take: limit,
         orderBy: { disposedAt: "desc" },
-        include: { site: { select: { id: true, name: true } } },
+        include: { site: { select: { id: true, name: true, customerId: true, customer: { select: { id: true, name: true } } } } },
       }),
     ]);
     return reply.send({ success: true, data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } });

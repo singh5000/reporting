@@ -25,6 +25,7 @@ export interface JwtPayload {
   tid: string;        // tenantId
   tsl: string;        // tenantSlug
   sid: string;        // sessionId
+  cid?: string;       // customerId (for CUSTOMER users)
   typ: UserType;
   roles: string[];
   iss: string;
@@ -75,6 +76,7 @@ export type UserStatus =
 export interface SafeUser {
   id: string;
   tenantId: string;
+  customerId: string | null;
   email: string;
   firstName: string;
   lastName: string;

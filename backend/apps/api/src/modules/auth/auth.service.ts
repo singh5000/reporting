@@ -120,7 +120,7 @@ export class AuthService {
     if (!user || user.status !== "ACTIVE") throw new UnauthorizedError();
 
     const roles = user.roles.map((ur) => ur.role.slug);
-    const newTokens = await this.generateTokens(user.id, record.tenantId, user.id, user.type, roles);
+    const newTokens = await this.generateTokens(user.id, record.tenantId, user.id, user.type, roles, undefined, (user as any).customerId);
 
     await this.repo.createRefreshToken({
       userId: user.id,
@@ -310,7 +310,7 @@ export class AuthService {
       expiresAt: sessionExpiry,
     });
 
-    const tokens = await this.generateTokens(user.id, tenantId, session.id, user.type, roles, tenantSlug);
+    const tokens = await this.generateTokens(user.id, tenantId, session.id, user.type, roles, tenantSlug, user.customerId);
 
     // Store session in Redis for fast validation
     await sessionCache.set(
@@ -376,7 +376,8 @@ export class AuthService {
     sessionId: string,
     userType: string,
     roles: string[],
-    tenantSlug?: string
+    tenantSlug?: string,
+    customerId?: string | null
   ): Promise<AuthTokens> {
     const slug = tenantSlug ?? (await basePrisma.tenant.findUnique({
       where: { id: tenantId },
@@ -388,6 +389,7 @@ export class AuthService {
       tid: tenantId,
       tsl: slug,
       sid: sessionId,
+      ...(customerId && { cid: customerId }),
       typ: userType as any,
       roles,
       iss: config.auth.issuer,
@@ -408,6 +410,7 @@ export class AuthService {
     return {
       id: user.id,
       tenantId: user.tenantId,
+      customerId: user.customerId ?? null,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,

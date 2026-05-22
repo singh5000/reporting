@@ -53,6 +53,7 @@ export const ListAuditsDto = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
   status: z.string().optional(),
   siteId: z.string().optional(),
+  customerId: z.string().optional(),
   assignedToId: z.string().optional(),
   type: z.string().optional(),
   fromDate: z.string().optional(),
