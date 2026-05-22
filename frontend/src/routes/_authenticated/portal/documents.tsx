@@ -153,7 +153,7 @@ function DocumentsPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search documentsâ€¦"
+          searchPlaceholder="Search documents..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -233,7 +233,7 @@ function DocumentsPage() {
               disabled={submitting || !form.title}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Creatingâ€¦" : "Create Document"}
+              {submitting ? "Creating..." : "Create Document"}
             </Button>
           </div>
         }
@@ -264,7 +264,7 @@ function DocumentsPage() {
             <Label htmlFor="doc-desc">Description</Label>
             <Textarea
               id="doc-desc"
-              placeholder="Brief description of this documentâ€¦"
+              placeholder="Brief description of this document..."
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

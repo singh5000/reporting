@@ -158,7 +158,7 @@ function TrainingPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search training programsâ€¦"
+          searchPlaceholder="Search training programs..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -242,7 +242,7 @@ function TrainingPage() {
               disabled={submitting || !form.title}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Creatingâ€¦" : "Create Program"}
+              {submitting ? "Creating..." : "Create Program"}
             </Button>
           </div>
         }
@@ -286,7 +286,7 @@ function TrainingPage() {
             <Label htmlFor="training-desc">Description</Label>
             <Textarea
               id="training-desc"
-              placeholder="Describe the training objectives and contentâ€¦"
+              placeholder="Describe the training objectives and content..."
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

@@ -88,11 +88,13 @@ export const authStore = {
 
   logout: async () => {
     const refreshToken = getRefreshToken();
-    try { await authService.logout(refreshToken ?? undefined); } catch { /* always clear */ }
+    // Clear synchronously first so route guards see the change immediately
     setAuthToken(null);
     setRefreshToken(null);
     state = { isAuthenticated: false, user: null };
     persist();
+    // Best-effort server-side session revocation
+    try { await authService.logout(refreshToken ?? undefined); } catch { /* noop */ }
   },
 
   setUser: (user: AuthUser) => {

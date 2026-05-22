@@ -142,7 +142,7 @@ function InductionsPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search inductionsâ€¦"
+          searchPlaceholder="Search inductions..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -226,7 +226,7 @@ function InductionsPage() {
               disabled={submitting || !form.title}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Creatingâ€¦" : "Create Induction"}
+              {submitting ? "Creating..." : "Create Induction"}
             </Button>
           </div>
         }
@@ -260,7 +260,7 @@ function InductionsPage() {
             <Label htmlFor="induction-desc">Description</Label>
             <Textarea
               id="induction-desc"
-              placeholder="Describe the induction scope and requirementsâ€¦"
+              placeholder="Describe the induction scope and requirements..."
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

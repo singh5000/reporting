@@ -79,6 +79,7 @@ export interface ListAuditsParams {
 }
 
 export interface CreateAuditPayload {
+  tenantId?: string;
   title: string;
   description?: string;
   type: string;

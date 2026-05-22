@@ -163,7 +163,7 @@ function AssetsPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search assetsâ€¦"
+          searchPlaceholder="Search assets..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -243,7 +243,7 @@ function AssetsPage() {
               disabled={submitting || !form.name}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Registeringâ€¦" : "Register Asset"}
+              {submitting ? "Registering..." : "Register Asset"}
             </Button>
           </div>
         }

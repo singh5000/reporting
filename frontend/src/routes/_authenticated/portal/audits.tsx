@@ -165,7 +165,7 @@ function AuditsPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search auditsâ€¦"
+          searchPlaceholder="Search audits..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -264,7 +264,7 @@ function AuditsPage() {
               disabled={submitting || !form.title}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Creatingâ€¦" : "Create Audit"}
+              {submitting ? "Creating..." : "Create Audit"}
             </Button>
           </div>
         }
@@ -320,7 +320,7 @@ function AuditsPage() {
             <Label htmlFor="audit-desc">Description</Label>
             <Textarea
               id="audit-desc"
-              placeholder="Describe the scope and objectivesâ€¦"
+              placeholder="Describe the scope and objectives..."
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

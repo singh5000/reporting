@@ -159,7 +159,7 @@ function WastePage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search waste recordsâ€¦"
+          searchPlaceholder="Search waste records..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -241,7 +241,7 @@ function WastePage() {
               disabled={submitting || !form.wasteType || !form.quantity}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Loggingâ€¦" : "Log Waste"}
+              {submitting ? "Logging..." : "Log Waste"}
             </Button>
           </div>
         }

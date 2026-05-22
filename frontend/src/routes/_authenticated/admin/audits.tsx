@@ -7,7 +7,8 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuditStore } from "@/lib/stores/audit.store";
 import { auditService, type CreateAuditPayload } from "@/lib/api/services/audit.service";
-import { usePermissions } from "@/lib/auth-store";
+import { usePermissions, useAuth } from "@/lib/auth-store";
+import { useTenantContext } from "@/lib/stores/tenant-context.store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -77,6 +78,9 @@ const EMPTY_FORM: CreateAuditPayload = {
 function AuditsPage() {
   const { audits, loading, initialized, fetchAudits, createAudit } = useAuditStore();
   const can = usePermissions();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+  const { selectedTenantId } = useTenantContext();
   const [stats, setStats] = useState<any>(null);
 
   const [search, setSearch] = useState("");
@@ -114,6 +118,7 @@ function AuditsPage() {
     try {
       await createAudit({
         ...form,
+        ...(isSuperAdmin && selectedTenantId ? { tenantId: selectedTenantId } : {}),
         scheduledAt: form.scheduledAt ? `${form.scheduledAt}T00:00:00.000Z` : undefined,
         dueDate: form.dueDate ? `${form.dueDate}T00:00:00.000Z` : undefined,
       });
@@ -164,7 +169,7 @@ function AuditsPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search auditsâ€¦"
+          searchPlaceholder="Search audits..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -260,15 +265,20 @@ function AuditsPage() {
             <Button
               form="create-audit-form"
               type="submit"
-              disabled={submitting || !form.title}
+              disabled={submitting || !form.title || (isSuperAdmin && !selectedTenantId)}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Creatingâ€¦" : "Create Audit"}
+              {submitting ? "Creating..." : "Create Audit"}
             </Button>
           </div>
         }
       >
         <form id="create-audit-form" onSubmit={handleSubmit} className="space-y-5">
+          {isSuperAdmin && !selectedTenantId && (
+            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2.5 text-xs text-yellow-700 dark:text-yellow-400">
+              Select a company from the header before creating an audit.
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="audit-title">Title <span className="text-red-500">*</span></Label>
             <Input
@@ -319,7 +329,7 @@ function AuditsPage() {
             <Label htmlFor="audit-desc">Description</Label>
             <Textarea
               id="audit-desc"
-              placeholder="Describe the scope and objectivesâ€¦"
+              placeholder="Describe the scope and objectives..."
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

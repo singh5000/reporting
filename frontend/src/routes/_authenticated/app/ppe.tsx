@@ -175,7 +175,7 @@ function PPEPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search PPE itemsâ€¦"
+          searchPlaceholder="Search PPE items..."
           filters={FILTER_CONFIGS}
           values={filterVals}
           onFilterChange={(key, val) => setFilterVals((prev) => ({ ...prev, [key]: val }))}
@@ -263,7 +263,7 @@ function PPEPage() {
               disabled={submitting || !form.name}
               className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
-              {submitting ? "Addingâ€¦" : "Add Item"}
+              {submitting ? "Adding..." : "Add Item"}
             </Button>
           </div>
         }

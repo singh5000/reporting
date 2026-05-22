@@ -97,7 +97,7 @@ function CreateIncidentPage() {
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <p className="mt-4 text-base font-semibold text-foreground">Incident reported</p>
-            <p className="mt-1 text-sm text-muted-foreground">Redirecting to incidents listâ€¦</p>
+            <p className="mt-1 text-sm text-muted-foreground">Redirecting to incidents list...</p>
           </SurfaceCard>
         ) : (
           <SurfaceCard className="p-6 md:p-8">
@@ -209,7 +209,7 @@ function CreateIncidentPage() {
                   className="gap-2 [background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
                 >
                   <Send className="h-4 w-4" />
-                  {submitting ? "Submittingâ€¦" : "Report Incident"}
+                  {submitting ? "Submitting..." : "Report Incident"}
                 </Button>
               </div>
             </form>

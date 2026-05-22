@@ -83,7 +83,7 @@ function CreateAuditPage() {
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <p className="mt-4 text-base font-semibold text-foreground">Audit created</p>
-            <p className="mt-1 text-sm text-muted-foreground">Redirecting to audits listâ€¦</p>
+            <p className="mt-1 text-sm text-muted-foreground">Redirecting to audits list...</p>
           </SurfaceCard>
         ) : (
           <SurfaceCard className="p-6 md:p-8">
@@ -152,7 +152,7 @@ function CreateAuditPage() {
                   className="gap-2 [background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
                 >
                   <Save className="h-4 w-4" />
-                  {submitting ? "Creatingâ€¦" : "Create Audit"}
+                  {submitting ? "Creating..." : "Create Audit"}
                 </Button>
               </div>
             </form>

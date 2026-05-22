@@ -31,9 +31,9 @@ export function Sidebar() {
   const navGroups =
     panel === "admin" ? adminNavGroups : panel === "portal" ? portalNavGroups : appNavGroups;
 
-  const handleLogout = () => {
-    authStore.logout();
-    navigate({ to: "/login", search: { redirect: "/dashboard" } });
+  const handleLogout = async () => {
+    await authStore.logout();
+    navigate({ to: "/login" });
   };
 
   return (

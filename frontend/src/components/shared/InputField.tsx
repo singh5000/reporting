@@ -26,7 +26,7 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       <div className={cn("group", className)}>
         <div
           className={cn(
-            "relative flex h-14 items-center rounded-xl border bg-card/40 transition-all duration-200",
+            "relative flex h-14 items-center rounded-xl border bg-input/60 transition-all duration-200",
             "border-border/70",
             focused && "border-primary/70 shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-primary)_18%,transparent)]",
             error && "border-destructive/70 shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-destructive)_15%,transparent)]",

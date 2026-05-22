@@ -353,7 +353,7 @@ function IncidentsPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search incidentsâ€¦"
+          searchPlaceholder="Search incidents..."
           filters={FILTER_CONFIGS}
           values={filterValues}
           onFilterChange={handleFilterChange}

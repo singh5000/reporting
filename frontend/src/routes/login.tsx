@@ -44,7 +44,7 @@ function LoginPage() {
           className="pointer-events-none absolute inset-0 -z-10"
           style={{
             background:
-              "radial-gradient(circle at 20% 10%, color-mix(in oklab, var(--color-primary) 18%, transparent), transparent 55%), radial-gradient(circle at 80% 90%, color-mix(in oklab, var(--color-primary) 12%, transparent), transparent 50%)",
+              "radial-gradient(ellipse 70% 55% at 15% -5%, color-mix(in oklab, var(--color-primary) 32%, transparent), transparent 70%), radial-gradient(ellipse 55% 45% at 85% 105%, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 70%)",
           }}
         />
       )}
@@ -61,7 +61,7 @@ function LoginPage() {
           <span className="text-lg font-semibold tracking-tight">{appName}</span>
         </div>
 
-        <div className="rounded-2xl border border-border/60 p-7 [background:var(--gradient-card)] [box-shadow:var(--shadow-elevated)] sm:p-8">
+        <div className="rounded-2xl border border-border/80 p-7 [background:var(--gradient-card)] [box-shadow:var(--shadow-elevated)] sm:p-8">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
             Sign in to your workspace
           </h1>

@@ -185,14 +185,14 @@ export function LoginForm() {
           <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">Quick demo access</span>
           <div className="h-px flex-1 bg-border/60" />
         </div>
-        <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
           {DEMO_ROLES.map((demo) => (
             <button
               key={demo.label}
               type="button"
               disabled={busy}
               onClick={() => onDemoLogin(demo)}
-              className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium transition-all disabled:opacity-50 ${demo.color}`}
+              className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium transition-all disabled:opacity-50 ${demo.color} ${demo.label === "Customer" ? "col-span-2" : ""}`}
             >
               <span>{demo.label}</span>
               {demoLoading === demo.label ? (
