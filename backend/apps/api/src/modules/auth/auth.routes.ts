@@ -11,7 +11,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // ── Public ──────────────────────────────────────────────────────────────
   fastify.post("/login", {
-    config: { rateLimit: { max: 10, timeWindow: 900000 } },
+    config: { rateLimit: { max: 50, timeWindow: 900000 } },
     handler: ctrl.login.bind(ctrl),
   });
 
