@@ -205,12 +205,15 @@ export default async function auditRoutes(fastify: FastifyInstance) {
     if (!body.success) throw new ValidationError("Validation failed", body.error.errors);
 
     const r = req as any;
-    const refNumber = await svc.generateRefNumber(r.tenantId);
+    const effectiveTenantId = body.data.tenantId ?? r.tenantId;
+    if (!effectiveTenantId) throw new ValidationError("tenantId is required", []);
+    const refNumber = await svc.generateRefNumber(effectiveTenantId);
 
+    const { tenantId: _t, ...auditData } = body.data;
     const audit = await prisma.audit.create({
       data: {
-        ...body.data,
-        tenantId: r.tenantId,
+        ...auditData,
+        tenantId: effectiveTenantId,
         refNumber,
         status: body.data.scheduledAt ? "SCHEDULED" : "DRAFT",
         scheduledAt: body.data.scheduledAt ? new Date(body.data.scheduledAt) : undefined,
@@ -219,11 +222,11 @@ export default async function auditRoutes(fastify: FastifyInstance) {
     });
 
     if (body.data.assignedToId) {
-      await svc.notifyAssignment(audit.id, body.data.assignedToId, r.tenantId);
+      await svc.notifyAssignment(audit.id, body.data.assignedToId, effectiveTenantId);
     }
 
     await auditLog.log({
-      tenantId: r.tenantId, userId: r.userId, action: "CREATE",
+      tenantId: effectiveTenantId, userId: r.userId, action: "CREATE",
       resource: "audit", resourceId: audit.id,
       after: { refNumber, title: audit.title }, ipAddress: req.ip,
     });

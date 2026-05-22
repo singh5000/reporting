@@ -36,6 +36,7 @@ export const CreateQuestionDto = z.object({
 
 // ── Audit DTOs ────────────────────────────────────────────────────────────────
 export const CreateAuditDto = z.object({
+  tenantId: z.string().optional(),
   templateId: z.string().optional(),
   siteId: z.string().optional(),
   customerId: z.string().optional(),
