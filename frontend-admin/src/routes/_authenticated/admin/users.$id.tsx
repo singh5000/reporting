@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ArrowLeft, User, Mail, Phone, Briefcase, Building2,
+  ArrowLeft, UserCircle, Mail, Phone, Briefcase, Building2,
   BadgeCheck, Warehouse, ToggleLeft, ToggleRight, ShieldCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -116,7 +116,7 @@ function UserDetailPage() {
             <ArrowLeft className="h-4 w-4" /> Back to Users
           </Link>
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/30 py-20">
-            <User className="h-10 w-10 text-muted-foreground/40" />
+            <UserCircle className="h-10 w-10 text-muted-foreground/40" />
             <p className="mt-4 text-sm font-medium">User not found</p>
           </div>
         </div>

@@ -35,10 +35,10 @@ import { Route as AuthenticatedAdminCompaniesRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminAuditsRouteImport } from './routes/_authenticated/admin/audits'
 import { Route as AuthenticatedAdminAssetsRouteImport } from './routes/_authenticated/admin/assets'
 import { Route as AuthenticatedAdminActivityRouteImport } from './routes/_authenticated/admin/activity'
+import { Route as AuthenticatedAdminUsersIdRouteImport } from './routes/_authenticated/admin/users.$id'
 import { Route as AuthenticatedAdminSitesIdRouteImport } from './routes/_authenticated/admin/sites.$id'
 import { Route as AuthenticatedAdminRolesIdRouteImport } from './routes/_authenticated/admin/roles.$id'
 import { Route as AuthenticatedAdminCompaniesIdRouteImport } from './routes/_authenticated/admin/companies.$id'
-import { Route as AuthenticatedAdminUsersIdRouteImport } from './routes/_authenticated/admin/users.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -184,6 +184,12 @@ const AuthenticatedAdminActivityRoute =
     path: '/activity',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminUsersIdRoute =
+  AuthenticatedAdminUsersIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminUsersRoute,
+  } as any)
 const AuthenticatedAdminSitesIdRoute =
   AuthenticatedAdminSitesIdRouteImport.update({
     id: '/$id',
@@ -201,12 +207,6 @@ const AuthenticatedAdminCompaniesIdRoute =
     id: '/$id',
     path: '/$id',
     getParentRoute: () => AuthenticatedAdminCompaniesRoute,
-  } as any)
-const AuthenticatedAdminUsersIdRoute =
-  AuthenticatedAdminUsersIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedAdminUsersRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -593,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminActivityRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/users/$id': {
+      id: '/_authenticated/admin/users/$id'
+      path: '/$id'
+      fullPath: '/admin/users/$id'
+      preLoaderRoute: typeof AuthenticatedAdminUsersIdRouteImport
+      parentRoute: typeof AuthenticatedAdminUsersRoute
+    }
     '/_authenticated/admin/sites/$id': {
       id: '/_authenticated/admin/sites/$id'
       path: '/$id'
@@ -614,29 +621,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCompaniesIdRouteImport
       parentRoute: typeof AuthenticatedAdminCompaniesRoute
     }
-    '/_authenticated/admin/users/$id': {
-      id: '/_authenticated/admin/users/$id'
-      path: '/$id'
-      fullPath: '/admin/users/$id'
-      preLoaderRoute: typeof AuthenticatedAdminUsersIdRouteImport
-      parentRoute: typeof AuthenticatedAdminUsersRoute
-    }
   }
 }
-
-interface AuthenticatedAdminUsersRouteChildren {
-  AuthenticatedAdminUsersIdRoute: typeof AuthenticatedAdminUsersIdRoute
-}
-
-const AuthenticatedAdminUsersRouteChildren: AuthenticatedAdminUsersRouteChildren =
-  {
-    AuthenticatedAdminUsersIdRoute: AuthenticatedAdminUsersIdRoute,
-  }
-
-const AuthenticatedAdminUsersRouteWithChildren =
-  AuthenticatedAdminUsersRoute._addFileChildren(
-    AuthenticatedAdminUsersRouteChildren,
-  )
 
 interface AuthenticatedAdminCompaniesRouteChildren {
   AuthenticatedAdminCompaniesIdRoute: typeof AuthenticatedAdminCompaniesIdRoute
@@ -678,6 +664,20 @@ const AuthenticatedAdminSitesRouteChildren: AuthenticatedAdminSitesRouteChildren
 const AuthenticatedAdminSitesRouteWithChildren =
   AuthenticatedAdminSitesRoute._addFileChildren(
     AuthenticatedAdminSitesRouteChildren,
+  )
+
+interface AuthenticatedAdminUsersRouteChildren {
+  AuthenticatedAdminUsersIdRoute: typeof AuthenticatedAdminUsersIdRoute
+}
+
+const AuthenticatedAdminUsersRouteChildren: AuthenticatedAdminUsersRouteChildren =
+  {
+    AuthenticatedAdminUsersIdRoute: AuthenticatedAdminUsersIdRoute,
+  }
+
+const AuthenticatedAdminUsersRouteWithChildren =
+  AuthenticatedAdminUsersRoute._addFileChildren(
+    AuthenticatedAdminUsersRouteChildren,
   )
 
 interface AuthenticatedAdminRouteChildren {
