@@ -144,7 +144,7 @@ async function main() {
 
   // ── Manager — operational control over assigned sites ────────────────────────
   await assignPerms(managerRole.id, {
-    site:           ["read"],
+    site:           ["create", "read", "update", "delete"],
     customer:       ["read"],
     user:           ["read", "assign"],
     incident:       ["create", "read", "update", "assign", "approve"],

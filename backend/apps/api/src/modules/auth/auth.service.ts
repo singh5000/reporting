@@ -23,6 +23,14 @@ import { basePrisma } from "@360crd/database";
 const SESSION_TTL_SECONDS = 3600; // 1hr TTL in Redis (refreshed on activity)
 const MFA_TOKEN_TTL_SECONDS = 300; // 5min MFA challenge window
 
+function parseExpiryToSeconds(expiry: string): number {
+  const match = expiry.match(/^(\d+)([smhd])$/);
+  if (!match) return 900;
+  const value = parseInt(match[1], 10);
+  const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+  return value * (multipliers[match[2]] ?? 1);
+}
+
 export class AuthService {
   private repo = new AuthRepository();
 
@@ -129,7 +137,7 @@ export class AuthService {
       family: record.family,
       deviceId: record.deviceId || undefined,
       ipAddress: meta.ipAddress,
-      expiresAt: addDays(new Date(), 7),
+      expiresAt: addDays(new Date(), 30),
     });
 
     return newTokens;
@@ -326,7 +334,7 @@ export class AuthService {
       family: randomUUID(),
       deviceId: dto.deviceId,
       ipAddress: meta.ipAddress,
-      expiresAt: dto.rememberMe ? addDays(new Date(), 30) : addDays(new Date(), 7),
+      expiresAt: dto.rememberMe ? addDays(new Date(), 90) : addDays(new Date(), 30),
     });
 
     await this.repo.updateLoginSuccess(user.id, meta.ipAddress);
@@ -401,7 +409,7 @@ export class AuthService {
     });
 
     const refreshToken = randomUUID() + "-" + randomUUID();
-    const expiresIn = 900; // 15 min in seconds
+    const expiresIn = parseExpiryToSeconds(config.auth.accessTokenExpiry);
 
     return { accessToken, refreshToken, expiresIn, tokenType: "Bearer" };
   }
