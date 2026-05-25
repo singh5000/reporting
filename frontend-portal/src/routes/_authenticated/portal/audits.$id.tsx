@@ -9,6 +9,7 @@ import { SurfaceCard } from "@/components/shared/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auditService, type Audit } from "@/lib/api/services/audit.service";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/portal/audits/$id")({
   head: () => ({
@@ -60,8 +61,14 @@ function AuditDetailPage() {
   useEffect(() => {
     auditService
       .get(id)
-      .then(setAudit)
-      .catch(() => setNotFound(true))
+      .then((data) => {
+        if (!data) { setNotFound(true); return; }
+        setAudit(data);
+      })
+      .catch((e: any) => {
+        toast.error(e?.message ?? "Failed to load audit");
+        setNotFound(true);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -136,7 +143,9 @@ function AuditDetailPage() {
                 {audit.description && (
                   <SurfaceCard className="p-6">
                     <h2 className="text-sm font-semibold text-foreground">Description</h2>
-                    <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-foreground/85">{audit.description}</p>
+                    <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-foreground/85">
+                      {audit.description}
+                    </p>
                   </SurfaceCard>
                 )}
 

@@ -194,6 +194,8 @@ export const portalNavGroups: NavGroup[] = [
       { label: "My Sites", to: "/portal/sites", icon: Warehouse, permission: "site:read" },
       { label: "Incidents", to: "/portal/incidents", icon: ShieldAlert, permission: "incident:read" },
       { label: "Audits", to: "/portal/audits", icon: ClipboardCheck, permission: "audit:read" },
+      { label: "Training", to: "/portal/training", icon: GraduationCap, permission: "training:read" },
+      { label: "Inductions", to: "/portal/inductions", icon: BookOpen, permission: "induction:read" },
       { label: "Documents", to: "/portal/documents", icon: FileText, permission: "document:read" },
     ],
   },
