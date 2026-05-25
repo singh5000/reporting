@@ -1,15 +1,22 @@
-﻿import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Plus, RefreshCw, Building2, CheckCircle2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useCompanyStore } from "@/lib/stores/company.store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { FilterBar } from "@/components/shared/FilterBar";
+import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { cn } from "@/lib/utils";
+import type { CreateCustomerPayload } from "@/lib/api/services/customer.service";
 
 export const Route = createFileRoute("/_authenticated/admin/companies")({
   head: () => ({
@@ -41,11 +48,74 @@ const FILTER_CONFIGS = [
   },
 ];
 
+const EMPTY_FORM = {
+  name: "", code: "", status: "ACTIVE",
+  industry: "", email: "", phone: "", city: "", country: "",
+};
+
+function AddCustomerForm({ id, formState, setFormState, onSubmit }: {
+  id: string;
+  formState: typeof EMPTY_FORM;
+  setFormState: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>>;
+  onSubmit: (e: React.FormEvent) => void;
+}) {
+  const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFormState((f) => ({ ...f, [k]: e.target.value }));
+  return (
+    <form id={id} onSubmit={onSubmit} className="space-y-5">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2 col-span-2">
+          <Label htmlFor={`${id}-name`}>Name <span className="text-red-500">*</span></Label>
+          <Input id={`${id}-name`} placeholder="Acme Corp" value={formState.name} onChange={set("name")} required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-code`}>Code <span className="text-red-500">*</span></Label>
+          <Input id={`${id}-code`} placeholder="CUST-001" value={formState.code} onChange={set("code")} required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-status`}>Status</Label>
+          <Select value={formState.status} onValueChange={(v) => setFormState((f) => ({ ...f, status: v }))}>
+            <SelectTrigger id={`${id}-status`}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
+              <SelectItem value="PROSPECT">Prospect</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2 col-span-2">
+          <Label htmlFor={`${id}-industry`}>Industry</Label>
+          <Input id={`${id}-industry`} placeholder="Manufacturing" value={formState.industry} onChange={set("industry")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-email`}>Email</Label>
+          <Input id={`${id}-email`} type="email" placeholder="contact@acme.com" value={formState.email} onChange={set("email")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-phone`}>Phone</Label>
+          <Input id={`${id}-phone`} type="tel" placeholder="+1 555 000 0000" value={formState.phone} onChange={set("phone")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-city`}>City</Label>
+          <Input id={`${id}-city`} placeholder="Sydney" value={formState.city} onChange={set("city")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-country`}>Country</Label>
+          <Input id={`${id}-country`} placeholder="Australia" value={formState.country} onChange={set("country")} />
+        </div>
+      </div>
+    </form>
+  );
+}
+
 function CompaniesPage() {
-  const { companies, loading, initialized, fetchCompanies } = useCompanyStore();
+  const { companies, loading, initialized, fetchCompanies, createCompany } = useCompanyStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterVals, setFilterVals] = useState<Record<string, string>>({});
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!initialized) fetchCompanies();
@@ -65,6 +135,27 @@ function CompaniesPage() {
     { label: "Active", value: companies.filter((c) => c.status === "ACTIVE").length, icon: CheckCircle2, color: "text-green-500" },
   ];
 
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await createCompany({
+        name: form.name,
+        code: form.code,
+        status: form.status || undefined,
+        industry: form.industry || undefined,
+        email: form.email || undefined,
+        phone: form.phone || undefined,
+        city: form.city || undefined,
+        country: form.country || undefined,
+      } as CreateCustomerPayload);
+      setDrawerOpen(false);
+      setForm(EMPTY_FORM);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <AppShell>
       <div className="mx-auto max-w-[1400px] space-y-5 animate-in fade-in duration-300">
@@ -77,12 +168,13 @@ function CompaniesPage() {
             <Button variant="outline" size="sm" onClick={() => fetchCompanies()} disabled={loading}>
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             </Button>
-            <Link
-              to="/companies/create"
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
               className="inline-flex h-9 items-center gap-2 rounded-lg [background:var(--gradient-primary)] px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:brightness-110"
             >
               <Plus className="h-4 w-4" /> Add Customer
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -120,12 +212,13 @@ function CompaniesPage() {
                 : "Add your first customer to get started"}
             </p>
             {!search && !Object.values(filterVals).some((v) => v && v !== "ALL") && (
-              <Link
-                to="/companies/create"
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
                 className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg [background:var(--gradient-primary)] px-4 text-sm font-medium text-primary-foreground"
               >
                 <Plus className="h-4 w-4" /> Add Customer
-              </Link>
+              </button>
             )}
           </div>
         ) : (
@@ -148,7 +241,7 @@ function CompaniesPage() {
                   <TableRow
                     key={company.id}
                     className="border-border/60 cursor-pointer hover:bg-muted/30"
-                    onClick={() => navigate({ to: "/companies/$id", params: { id: company.id } })}
+                    onClick={() => navigate({ to: "/admin/companies/$id", params: { id: company.id } })}
                   >
                     <TableCell className="font-mono text-xs text-muted-foreground">{company.code}</TableCell>
                     <TableCell>
@@ -184,7 +277,29 @@ function CompaniesPage() {
           </div>
         )}
       </div>
+
+      <ModuleDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title="Add Customer"
+        description="Create a new customer record"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
+            <Button
+              form="create-customer-form"
+              type="submit"
+              disabled={submitting || !form.name || !form.code}
+              className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
+            >
+              {submitting ? "Adding..." : "Add Customer"}
+            </Button>
+          </div>
+        }
+      >
+        <AddCustomerForm id="create-customer-form" formState={form} setFormState={setForm} onSubmit={handleCreate} />
+      </ModuleDrawer>
     </AppShell>
   );
 }
-

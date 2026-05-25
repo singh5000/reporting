@@ -35,6 +35,7 @@ import { Route as AuthenticatedAdminCompaniesRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminAuditsRouteImport } from './routes/_authenticated/admin/audits'
 import { Route as AuthenticatedAdminAssetsRouteImport } from './routes/_authenticated/admin/assets'
 import { Route as AuthenticatedAdminActivityRouteImport } from './routes/_authenticated/admin/activity'
+import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin/users.index'
 import { Route as AuthenticatedAdminUsersIdRouteImport } from './routes/_authenticated/admin/users.$id'
 import { Route as AuthenticatedAdminSitesIdRouteImport } from './routes/_authenticated/admin/sites.$id'
 import { Route as AuthenticatedAdminRolesIdRouteImport } from './routes/_authenticated/admin/roles.$id'
@@ -184,6 +185,12 @@ const AuthenticatedAdminActivityRoute =
     path: '/activity',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminUsersIndexRoute =
+  AuthenticatedAdminUsersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminUsersRoute,
+  } as any)
 const AuthenticatedAdminUsersIdRoute =
   AuthenticatedAdminUsersIdRouteImport.update({
     id: '/$id',
@@ -239,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/admin/roles/$id': typeof AuthenticatedAdminRolesIdRoute
   '/admin/sites/$id': typeof AuthenticatedAdminSitesIdRoute
   '/admin/users/$id': typeof AuthenticatedAdminUsersIdRoute
+  '/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -263,13 +271,13 @@ export interface FileRoutesByTo {
   '/admin/sites': typeof AuthenticatedAdminSitesRouteWithChildren
   '/admin/tenants': typeof AuthenticatedAdminTenantsRoute
   '/admin/training': typeof AuthenticatedAdminTrainingRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/admin/waste': typeof AuthenticatedAdminWasteRoute
   '/admin/webhooks': typeof AuthenticatedAdminWebhooksRoute
   '/admin/companies/$id': typeof AuthenticatedAdminCompaniesIdRoute
   '/admin/roles/$id': typeof AuthenticatedAdminRolesIdRoute
   '/admin/sites/$id': typeof AuthenticatedAdminSitesIdRoute
   '/admin/users/$id': typeof AuthenticatedAdminUsersIdRoute
+  '/admin/users': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/roles/$id': typeof AuthenticatedAdminRolesIdRoute
   '/_authenticated/admin/sites/$id': typeof AuthenticatedAdminSitesIdRoute
   '/_authenticated/admin/users/$id': typeof AuthenticatedAdminUsersIdRoute
+  '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
     | '/admin/roles/$id'
     | '/admin/sites/$id'
     | '/admin/users/$id'
+    | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -360,13 +370,13 @@ export interface FileRouteTypes {
     | '/admin/sites'
     | '/admin/tenants'
     | '/admin/training'
-    | '/admin/users'
     | '/admin/waste'
     | '/admin/webhooks'
     | '/admin/companies/$id'
     | '/admin/roles/$id'
     | '/admin/sites/$id'
     | '/admin/users/$id'
+    | '/admin/users'
   id:
     | '__root__'
     | '/'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/roles/$id'
     | '/_authenticated/admin/sites/$id'
     | '/_authenticated/admin/users/$id'
+    | '/_authenticated/admin/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -593,6 +604,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminActivityRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/users/': {
+      id: '/_authenticated/admin/users/'
+      path: '/'
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof AuthenticatedAdminUsersIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminUsersRoute
+    }
     '/_authenticated/admin/users/$id': {
       id: '/_authenticated/admin/users/$id'
       path: '/$id'
@@ -668,11 +686,13 @@ const AuthenticatedAdminSitesRouteWithChildren =
 
 interface AuthenticatedAdminUsersRouteChildren {
   AuthenticatedAdminUsersIdRoute: typeof AuthenticatedAdminUsersIdRoute
+  AuthenticatedAdminUsersIndexRoute: typeof AuthenticatedAdminUsersIndexRoute
 }
 
 const AuthenticatedAdminUsersRouteChildren: AuthenticatedAdminUsersRouteChildren =
   {
     AuthenticatedAdminUsersIdRoute: AuthenticatedAdminUsersIdRoute,
+    AuthenticatedAdminUsersIndexRoute: AuthenticatedAdminUsersIndexRoute,
   }
 
 const AuthenticatedAdminUsersRouteWithChildren =

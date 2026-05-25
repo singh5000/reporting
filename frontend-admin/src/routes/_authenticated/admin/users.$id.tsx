@@ -224,11 +224,11 @@ function UserDetailPage() {
                 <ShieldCheck className="h-4 w-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold text-foreground">Assigned Roles</h3>
               </div>
-              {user.roles.length === 0 ? (
+              {(user.roles ?? []).length === 0 ? (
                 <p className="text-xs text-muted-foreground">No roles assigned</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {user.roles.map((r) => (
+                  {(user.roles ?? []).map((r) => (
                     <Badge key={r.id} variant="outline" className="gap-1.5 px-2.5 py-1 text-xs">
                       <ShieldCheck className="h-3 w-3 text-primary/70" />
                       {r.name}

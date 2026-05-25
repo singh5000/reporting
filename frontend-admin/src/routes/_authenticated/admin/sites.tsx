@@ -68,6 +68,70 @@ const EMPTY_FORM = {
   address: "", city: "", state: "", country: "", postalCode: "",
 };
 
+function SiteForm({ id, formState, setFormState, onSubmit }: {
+  id: string;
+  formState: typeof EMPTY_FORM;
+  setFormState: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>>;
+  onSubmit: (e: React.FormEvent) => void;
+}) {
+  const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFormState((f) => ({ ...f, [k]: e.target.value }));
+  return (
+    <form id={id} onSubmit={onSubmit} className="space-y-5">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2 col-span-2">
+          <Label htmlFor={`${id}-name`}>Name <span className="text-red-500">*</span></Label>
+          <Input id={`${id}-name`} placeholder="Main Warehouse" value={formState.name} onChange={set("name")} required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-code`}>Code <span className="text-red-500">*</span></Label>
+          <Input id={`${id}-code`} placeholder="SITE-001" value={formState.code} onChange={set("code")} required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-type`}>Type</Label>
+          <Select value={formState.type} onValueChange={(v) => setFormState((f) => ({ ...f, type: v }))}>
+            <SelectTrigger id={`${id}-type`}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {SITE_TYPES.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-status`}>Status</Label>
+          <Select value={formState.status} onValueChange={(v) => setFormState((f) => ({ ...f, status: v }))}>
+            <SelectTrigger id={`${id}-status`}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
+              <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-city`}>City</Label>
+          <Input id={`${id}-city`} placeholder="Sydney" value={formState.city} onChange={set("city")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-state`}>State</Label>
+          <Input id={`${id}-state`} placeholder="NSW" value={formState.state} onChange={set("state")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-country`}>Country</Label>
+          <Input id={`${id}-country`} placeholder="Australia" value={formState.country} onChange={set("country")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-postal`}>Postal Code</Label>
+          <Input id={`${id}-postal`} placeholder="2000" value={formState.postalCode} onChange={set("postalCode")} />
+        </div>
+        <div className="space-y-2 col-span-2">
+          <Label htmlFor={`${id}-address`}>Address</Label>
+          <Input id={`${id}-address`} placeholder="123 Main St" value={formState.address} onChange={set("address")} />
+        </div>
+      </div>
+    </form>
+  );
+}
+
 function SitesPage() {
   const { facilities, loading, initialized, fetchFacilities, createFacility, updateFacility, removeFacility } = useFacilityStore();
   const can = usePermissions();
@@ -171,70 +235,6 @@ function SitesPage() {
     if (!deleteTarget) return;
     await removeFacility(deleteTarget.id);
     setDeleteTarget(null);
-  }
-
-  function SiteForm({ id, formState, setFormState, onSubmit }: {
-    id: string;
-    formState: typeof EMPTY_FORM;
-    setFormState: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM>>;
-    onSubmit: (e: React.FormEvent) => void;
-  }) {
-    const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement>) =>
-      setFormState((f) => ({ ...f, [k]: e.target.value }));
-    return (
-      <form id={id} onSubmit={onSubmit} className="space-y-5">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2 col-span-2">
-            <Label htmlFor={`${id}-name`}>Name <span className="text-red-500">*</span></Label>
-            <Input id={`${id}-name`} placeholder="Main Warehouse" value={formState.name} onChange={set("name")} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-code`}>Code <span className="text-red-500">*</span></Label>
-            <Input id={`${id}-code`} placeholder="SITE-001" value={formState.code} onChange={set("code")} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-type`}>Type</Label>
-            <Select value={formState.type} onValueChange={(v) => setFormState((f) => ({ ...f, type: v }))}>
-              <SelectTrigger id={`${id}-type`}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SITE_TYPES.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-status`}>Status</Label>
-            <Select value={formState.status} onValueChange={(v) => setFormState((f) => ({ ...f, status: v }))}>
-              <SelectTrigger id={`${id}-status`}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-                <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-city`}>City</Label>
-            <Input id={`${id}-city`} placeholder="Sydney" value={formState.city} onChange={set("city")} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-state`}>State</Label>
-            <Input id={`${id}-state`} placeholder="NSW" value={formState.state} onChange={set("state")} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-country`}>Country</Label>
-            <Input id={`${id}-country`} placeholder="Australia" value={formState.country} onChange={set("country")} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-postal`}>Postal Code</Label>
-            <Input id={`${id}-postal`} placeholder="2000" value={formState.postalCode} onChange={set("postalCode")} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label htmlFor={`${id}-address`}>Address</Label>
-            <Input id={`${id}-address`} placeholder="123 Main St" value={formState.address} onChange={set("address")} />
-          </div>
-        </div>
-      </form>
-    );
   }
 
   return (
