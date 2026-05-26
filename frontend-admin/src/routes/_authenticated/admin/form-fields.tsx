@@ -19,6 +19,7 @@ import { http } from "@/lib/api/axios";
 import { ENDPOINTS } from "@/lib/api/endpoints";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
+import { useTenantContext } from "@/lib/stores/tenant-context.store";
 
 export const Route = createFileRoute("/_authenticated/admin/form-fields")({
   head: () => ({ meta: [{ title: "Form Builder · 360CRD" }] }),
@@ -343,7 +344,10 @@ function FieldForm({
 
 function FormBuilderPage() {
   const { user } = useAuth();
-  const canManage = user?.role === "super_admin" || user?.role === "manager" || user?.role === "tenant_admin";
+  const { selectedTenantId } = useTenantContext();
+  const isSuperAdmin = user?.role === "super_admin";
+  const canManage = isSuperAdmin || user?.role === "manager" || user?.role === "tenant_admin";
+  const superAdminNeedsCompany = isSuperAdmin && !selectedTenantId;
 
   const [activeTab, setActiveTab] = useState<"incident" | "audit">("incident");
   const [fields, setFields] = useState<FormField[]>([]);
@@ -465,13 +469,21 @@ function FormBuilderPage() {
               <Button
                 size="sm"
                 onClick={openCreate}
-                className="gap-2 [background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
+                disabled={superAdminNeedsCompany}
+                title={superAdminNeedsCompany ? "Select a company from the header first" : undefined}
+                className="gap-2 [background:var(--gradient-primary)] text-primary-foreground hover:brightness-110 disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" /> Add Field
               </Button>
             )}
           </div>
         </div>
+
+        {superAdminNeedsCompany && (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-400">
+            Select a company from the header to manage form fields for that company's users.
+          </div>
+        )}
 
         {/* Module tabs */}
         <div className="flex gap-1 rounded-lg border border-border/50 bg-muted/30 p-1 w-fit">

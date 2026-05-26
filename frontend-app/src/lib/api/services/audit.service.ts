@@ -89,6 +89,7 @@ export interface CreateAuditPayload {
   assignedToId?: string;
   scheduledAt?: string;
   dueDate?: string;
+  metadata?: Record<string, unknown>;
 }
 
 const wrap = <T>(res: { success: boolean; data: T }) => res.data;

@@ -121,6 +121,7 @@ export interface CreateIncidentPayload {
   bodyPart?: string;
   injuredPersons?: number;
   immediateActions?: string;
+  metadata?: Record<string, unknown>;
 }
 
 const wrap = <T>(res: { success: boolean; data: T }) => res.data;

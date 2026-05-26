@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Save } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -9,6 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { http } from "@/lib/api/axios";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+
+type FieldType = "TEXT"|"TEXTAREA"|"NUMBER"|"SELECT"|"MULTISELECT"|"CHECKBOX"|"DATE"|"URL"|"EMAIL"|"PHONE";
+interface FormField {
+  id: string; module: string; name: string; label: string; type: FieldType;
+  placeholder?: string|null; helpText?: string|null; isRequired: boolean;
+  isEnabled: boolean; options?: {label:string;value:string}[]|null; order: number;
+}
 
 export const Route = createFileRoute("/_authenticated/app/audits/create")({
   head: () => ({
@@ -41,6 +51,18 @@ function CreateAuditPage() {
   const [type, setType] = useState("SCHEDULED");
   const [scheduledAt, setScheduledAt] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [customFields, setCustomFields] = useState<FormField[]>([]);
+  const [metadata, setMetadata] = useState<Record<string, unknown>>({});
+
+  useEffect(() => {
+    http.get<any>(`${ENDPOINTS.formFields.list}?module=audit&enabled=true`)
+      .then((res) => setCustomFields(res.data?.data ?? []))
+      .catch(() => {});
+  }, []);
+
+  function handleMeta(name: string, val: unknown) {
+    setMetadata((prev) => ({ ...prev, [name]: val }));
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +75,7 @@ function CreateAuditPage() {
         type,
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
       setSuccess(true);
       setTimeout(() => navigate({ to: "/app/audits" }), 1500);
@@ -141,6 +164,65 @@ function CreateAuditPage() {
                   />
                 </div>
               </div>
+
+              {customFields.length > 0 && (
+                <div className="space-y-4 border-t border-border/40 pt-4">
+                  <p className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">Additional Fields</p>
+                  {customFields.map((f) => {
+                    const opts = (f.options ?? []) as { label: string; value: string }[];
+                    const value = metadata[f.name];
+                    const strVal = String(value ?? "");
+                    const labelEl = (
+                      <Label className="block px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+                        {f.label}{f.isRequired && <span className="ml-1 text-red-500">*</span>}
+                      </Label>
+                    );
+                    if (f.type === "TEXTAREA") return (
+                      <div key={f.id}>{labelEl}
+                        <Textarea value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} rows={3} required={f.isRequired} />
+                        {f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}
+                      </div>
+                    );
+                    if (f.type === "SELECT") return (
+                      <div key={f.id}>{labelEl}
+                        <Select value={strVal} onValueChange={(v) => handleMeta(f.name, v)}>
+                          <SelectTrigger><SelectValue placeholder={f.placeholder ?? "Select…"} /></SelectTrigger>
+                          <SelectContent>{opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                        {f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}
+                      </div>
+                    );
+                    if (f.type === "MULTISELECT") {
+                      const sel: string[] = Array.isArray(value) ? (value as string[]) : [];
+                      return (
+                        <div key={f.id}>{labelEl}
+                          <div className="space-y-1.5 rounded-lg border border-border/50 p-3">
+                            {opts.map((o) => (
+                              <label key={o.value} className="flex cursor-pointer items-center gap-2.5">
+                                <input type="checkbox" checked={sel.includes(o.value)} onChange={(e) => handleMeta(f.name, e.target.checked ? [...sel, o.value] : sel.filter((v) => v !== o.value))} className="h-4 w-4 rounded border-border accent-primary" />
+                                <span className="text-sm">{o.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (f.type === "CHECKBOX") return (
+                      <div key={f.id} className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3">
+                        <Switch id={f.name} checked={Boolean(value)} onCheckedChange={(v) => handleMeta(f.name, v)} />
+                        <Label htmlFor={f.name} className="cursor-pointer text-sm">{f.label}</Label>
+                      </div>
+                    );
+                    const typeMap: Record<string, string> = { DATE: "date", EMAIL: "email", PHONE: "tel", URL: "url", NUMBER: "number", TEXT: "text" };
+                    return (
+                      <div key={f.id}>{labelEl}
+                        <Input type={typeMap[f.type] ?? "text"} value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} required={f.isRequired} />
+                        {f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 border-t border-border/60 pt-5">
                 <Button type="button" variant="outline" onClick={() => navigate({ to: "/app/audits" })}>

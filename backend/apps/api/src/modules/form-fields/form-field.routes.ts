@@ -39,6 +39,9 @@ export default async function formFieldRoutes(fastify: FastifyInstance) {
   // ── List fields for a module ──────────────────────────────────────────────
   fastify.get("/", async (req, reply) => {
     const r = req as any;
+    if (!r.tenantId) {
+      return reply.send({ success: true, data: [] });
+    }
     const { module, enabled } = req.query as { module?: string; enabled?: string };
 
     const where: any = { tenantId: r.tenantId };
@@ -59,6 +62,9 @@ export default async function formFieldRoutes(fastify: FastifyInstance) {
     { preHandler: [requireRole(...MANAGE_ROLES)] },
     async (req, reply) => {
       const r = req as any;
+      if (!r.tenantId) {
+        return reply.status(400).send({ success: false, error: { code: "NO_TENANT", message: "Select a company from the header before creating fields" } });
+      }
       const parsed = CreateFieldDto.safeParse(req.body);
       if (!parsed.success) throw new ValidationError("Validation failed", parsed.error.errors);
 
