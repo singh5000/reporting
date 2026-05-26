@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, Save } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Save, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SurfaceCard } from "@/components/shared/Card";
 import { useAuditStore } from "@/lib/stores/audit.store";
@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { http } from "@/lib/api/axios";
 import { ENDPOINTS } from "@/lib/api/endpoints";
+import { useAuth } from "@/lib/auth-store";
+import { toast } from "sonner";
 
 type FieldType = "TEXT"|"TEXTAREA"|"NUMBER"|"SELECT"|"MULTISELECT"|"CHECKBOX"|"DATE"|"URL"|"EMAIL"|"PHONE";
 interface FormField {
@@ -43,6 +45,8 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 function CreateAuditPage() {
   const navigate = useNavigate();
   const { createAudit } = useAuditStore();
+  const { user } = useAuth();
+  const canManage = user?.role === "manager" || user?.role === "tenant_admin";
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,11 +61,22 @@ function CreateAuditPage() {
   useEffect(() => {
     http.get<any>(`${ENDPOINTS.formFields.list}?module=audit&enabled=true`)
       .then((res) => setCustomFields(res.data?.data ?? []))
-      .catch(() => {});
+      .catch((err) => console.error("[FormFields] audit fetch failed", err));
   }, []);
 
   function handleMeta(name: string, val: unknown) {
     setMetadata((prev) => ({ ...prev, [name]: val }));
+  }
+
+  async function handleDeleteField(id: string) {
+    if (!confirm("Remove this field from the form? It will be deleted for all future entries.")) return;
+    try {
+      await http.delete(ENDPOINTS.formFields.remove(id));
+      setCustomFields((prev) => prev.filter((f) => f.id !== id));
+      toast.success("Field removed");
+    } catch {
+      toast.error("Failed to remove field");
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,47 +192,35 @@ function CreateAuditPage() {
                         {f.label}{f.isRequired && <span className="ml-1 text-red-500">*</span>}
                       </Label>
                     );
-                    if (f.type === "TEXTAREA") return (
-                      <div key={f.id}>{labelEl}
-                        <Textarea value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} rows={3} required={f.isRequired} />
-                        {f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}
-                      </div>
-                    );
-                    if (f.type === "SELECT") return (
-                      <div key={f.id}>{labelEl}
-                        <Select value={strVal} onValueChange={(v) => handleMeta(f.name, v)}>
-                          <SelectTrigger><SelectValue placeholder={f.placeholder ?? "Select…"} /></SelectTrigger>
-                          <SelectContent>{opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                        </Select>
-                        {f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}
-                      </div>
-                    );
-                    if (f.type === "MULTISELECT") {
+
+                    let content: React.ReactNode;
+                    if (f.type === "TEXTAREA") {
+                      content = (<>{labelEl}<Textarea value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} rows={3} required={f.isRequired} />{f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+                    } else if (f.type === "SELECT") {
+                      content = (<>{labelEl}<Select value={strVal} onValueChange={(v) => handleMeta(f.name, v)}><SelectTrigger><SelectValue placeholder={f.placeholder ?? "Select…"} /></SelectTrigger><SelectContent>{opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>{f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+                    } else if (f.type === "MULTISELECT") {
                       const sel: string[] = Array.isArray(value) ? (value as string[]) : [];
-                      return (
-                        <div key={f.id}>{labelEl}
-                          <div className="space-y-1.5 rounded-lg border border-border/50 p-3">
-                            {opts.map((o) => (
-                              <label key={o.value} className="flex cursor-pointer items-center gap-2.5">
-                                <input type="checkbox" checked={sel.includes(o.value)} onChange={(e) => handleMeta(f.name, e.target.checked ? [...sel, o.value] : sel.filter((v) => v !== o.value))} className="h-4 w-4 rounded border-border accent-primary" />
-                                <span className="text-sm">{o.label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      );
+                      content = (<>{labelEl}<div className="space-y-1.5 rounded-lg border border-border/50 p-3">{opts.map((o) => (<label key={o.value} className="flex cursor-pointer items-center gap-2.5"><input type="checkbox" checked={sel.includes(o.value)} onChange={(e) => handleMeta(f.name, e.target.checked ? [...sel, o.value] : sel.filter((v) => v !== o.value))} className="h-4 w-4 rounded border-border accent-primary" /><span className="text-sm">{o.label}</span></label>))}</div></>);
+                    } else if (f.type === "CHECKBOX") {
+                      content = (<div className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3"><Switch id={f.name} checked={Boolean(value)} onCheckedChange={(v) => handleMeta(f.name, v)} /><Label htmlFor={f.name} className="cursor-pointer text-sm">{f.label}</Label></div>);
+                    } else {
+                      const typeMap: Record<string, string> = { DATE: "date", EMAIL: "email", PHONE: "tel", URL: "url", NUMBER: "number", TEXT: "text" };
+                      content = (<>{labelEl}<Input type={typeMap[f.type] ?? "text"} value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} required={f.isRequired} />{f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
                     }
-                    if (f.type === "CHECKBOX") return (
-                      <div key={f.id} className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3">
-                        <Switch id={f.name} checked={Boolean(value)} onCheckedChange={(v) => handleMeta(f.name, v)} />
-                        <Label htmlFor={f.name} className="cursor-pointer text-sm">{f.label}</Label>
-                      </div>
-                    );
-                    const typeMap: Record<string, string> = { DATE: "date", EMAIL: "email", PHONE: "tel", URL: "url", NUMBER: "number", TEXT: "text" };
+
                     return (
-                      <div key={f.id}>{labelEl}
-                        <Input type={typeMap[f.type] ?? "text"} value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} required={f.isRequired} />
-                        {f.helpText && <p className="mt-1 px-1 text-[11px] text-muted-foreground">{f.helpText}</p>}
+                      <div key={f.id} className="group relative">
+                        {content}
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteField(f.id)}
+                            title="Remove this field from the form"
+                            className="absolute right-0 top-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}

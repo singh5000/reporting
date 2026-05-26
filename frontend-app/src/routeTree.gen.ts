@@ -23,6 +23,7 @@ import { Route as AuthenticatedAppPpeRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAppNotificationsRouteImport } from './routes/_authenticated/app/notifications'
 import { Route as AuthenticatedAppInductionsRouteImport } from './routes/_authenticated/app/inductions'
 import { Route as AuthenticatedAppIncidentsRouteImport } from './routes/_authenticated/app/incidents'
+import { Route as AuthenticatedAppFormFieldsRouteImport } from './routes/_authenticated/app/form-fields'
 import { Route as AuthenticatedAppDocumentsRouteImport } from './routes/_authenticated/app/documents'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
 import { Route as AuthenticatedAppAuditsRouteImport } from './routes/_authenticated/app/audits'
@@ -111,6 +112,12 @@ const AuthenticatedAppIncidentsRoute =
   AuthenticatedAppIncidentsRouteImport.update({
     id: '/incidents',
     path: '/incidents',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppFormFieldsRoute =
+  AuthenticatedAppFormFieldsRouteImport.update({
+    id: '/form-fields',
+    path: '/form-fields',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
 const AuthenticatedAppDocumentsRoute =
@@ -217,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/app/audits': typeof AuthenticatedAppAuditsRouteWithChildren
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/documents': typeof AuthenticatedAppDocumentsRoute
+  '/app/form-fields': typeof AuthenticatedAppFormFieldsRoute
   '/app/incidents': typeof AuthenticatedAppIncidentsRouteWithChildren
   '/app/inductions': typeof AuthenticatedAppInductionsRouteWithChildren
   '/app/notifications': typeof AuthenticatedAppNotificationsRoute
@@ -247,6 +255,7 @@ export interface FileRoutesByTo {
   '/app/assets': typeof AuthenticatedAppAssetsRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/documents': typeof AuthenticatedAppDocumentsRoute
+  '/app/form-fields': typeof AuthenticatedAppFormFieldsRoute
   '/app/notifications': typeof AuthenticatedAppNotificationsRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/sites': typeof AuthenticatedAppSitesRoute
@@ -276,6 +285,7 @@ export interface FileRoutesById {
   '/_authenticated/app/audits': typeof AuthenticatedAppAuditsRouteWithChildren
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/_authenticated/app/documents': typeof AuthenticatedAppDocumentsRoute
+  '/_authenticated/app/form-fields': typeof AuthenticatedAppFormFieldsRoute
   '/_authenticated/app/incidents': typeof AuthenticatedAppIncidentsRouteWithChildren
   '/_authenticated/app/inductions': typeof AuthenticatedAppInductionsRouteWithChildren
   '/_authenticated/app/notifications': typeof AuthenticatedAppNotificationsRoute
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/app/audits'
     | '/app/dashboard'
     | '/app/documents'
+    | '/app/form-fields'
     | '/app/incidents'
     | '/app/inductions'
     | '/app/notifications'
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/app/assets'
     | '/app/dashboard'
     | '/app/documents'
+    | '/app/form-fields'
     | '/app/notifications'
     | '/app/reports'
     | '/app/sites'
@@ -367,6 +379,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/audits'
     | '/_authenticated/app/dashboard'
     | '/_authenticated/app/documents'
+    | '/_authenticated/app/form-fields'
     | '/_authenticated/app/incidents'
     | '/_authenticated/app/inductions'
     | '/_authenticated/app/notifications'
@@ -495,6 +508,13 @@ declare module '@tanstack/react-router' {
       path: '/incidents'
       fullPath: '/app/incidents'
       preLoaderRoute: typeof AuthenticatedAppIncidentsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/form-fields': {
+      id: '/_authenticated/app/form-fields'
+      path: '/form-fields'
+      fullPath: '/app/form-fields'
+      preLoaderRoute: typeof AuthenticatedAppFormFieldsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/documents': {
@@ -698,6 +718,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppAuditsRoute: typeof AuthenticatedAppAuditsRouteWithChildren
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
   AuthenticatedAppDocumentsRoute: typeof AuthenticatedAppDocumentsRoute
+  AuthenticatedAppFormFieldsRoute: typeof AuthenticatedAppFormFieldsRoute
   AuthenticatedAppIncidentsRoute: typeof AuthenticatedAppIncidentsRouteWithChildren
   AuthenticatedAppInductionsRoute: typeof AuthenticatedAppInductionsRouteWithChildren
   AuthenticatedAppNotificationsRoute: typeof AuthenticatedAppNotificationsRoute
@@ -713,6 +734,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppAuditsRoute: AuthenticatedAppAuditsRouteWithChildren,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
   AuthenticatedAppDocumentsRoute: AuthenticatedAppDocumentsRoute,
+  AuthenticatedAppFormFieldsRoute: AuthenticatedAppFormFieldsRoute,
   AuthenticatedAppIncidentsRoute: AuthenticatedAppIncidentsRouteWithChildren,
   AuthenticatedAppInductionsRoute: AuthenticatedAppInductionsRouteWithChildren,
   AuthenticatedAppNotificationsRoute: AuthenticatedAppNotificationsRoute,

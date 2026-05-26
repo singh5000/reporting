@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { authenticate } from "../../middleware/authenticate";
 import { requireRole } from "../../middleware/authorize";
-import { prisma } from "@360crd/database";
+import { prisma, basePrisma, tenantContext } from "@360crd/database";
 import { ValidationError, NotFoundError } from "../../shared/errors/http.errors";
 
 const MANAGE_ROLES = ["manager", "tenant_admin"];
@@ -35,6 +35,23 @@ const ReorderDto = z.object({
 
 export default async function formFieldRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", authenticate);
+
+  // For Super Admin (no tenantId in JWT): resolve tenant from X-Tenant-Slug / X-Tenant-ID header
+  fastify.addHook("preHandler", async (req) => {
+    const r = req as any;
+    if (r.tenantId) return;
+    const slug = req.headers["x-tenant-slug"] as string | undefined;
+    const tid  = req.headers["x-tenant-id"]   as string | undefined;
+    if (!slug && !tid) return;
+    const tenant = await basePrisma.tenant.findFirst({
+      where: slug ? { slug, deletedAt: null } : { id: tid, deletedAt: null },
+      select: { id: true, slug: true },
+    });
+    if (!tenant) return;
+    r.tenantId  = tenant.id;
+    r.tenantSlug = tenant.slug;
+    tenantContext.enterWith({ tenantId: tenant.id, userId: r.userId, sessionId: r.sessionId });
+  });
 
   // ── List fields for a module ──────────────────────────────────────────────
   fastify.get("/", async (req, reply) => {

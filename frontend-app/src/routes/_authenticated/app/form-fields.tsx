@@ -20,22 +20,21 @@ import { http } from "@/lib/api/axios";
 import { ENDPOINTS } from "@/lib/api/endpoints";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
-import { useTenantContext } from "@/lib/stores/tenant-context.store";
 
-export const Route = createFileRoute("/_authenticated/admin/form-fields")({
+export const Route = createFileRoute("/_authenticated/app/form-fields")({
   head: () => ({ meta: [{ title: "Form Builder · 360CRD" }] }),
   component: FormBuilderPage,
 });
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type FieldType =
+type FieldType =
   | "TEXT" | "TEXTAREA" | "NUMBER" | "SELECT" | "MULTISELECT"
   | "CHECKBOX" | "DATE" | "URL" | "EMAIL" | "PHONE";
 
-export interface FieldOption { label: string; value: string; }
+interface FieldOption { label: string; value: string; }
 
-export interface FormField {
+interface FormField {
   id: string;
   module: "incident" | "audit";
   name: string;
@@ -90,7 +89,7 @@ function slugify(label: string) {
 
 function FieldRow({
   field, onEdit, onDelete, onToggle,
-  onDragStart, onDragOver, onDrop,
+  onDragStart, onDragOver, onDrop, canManage,
 }: {
   field: FormField;
   onEdit: (f: FormField) => void;
@@ -99,19 +98,22 @@ function FieldRow({
   onDragStart: (id: string) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (targetId: string) => void;
+  canManage: boolean;
 }) {
   return (
     <div
-      draggable
-      onDragStart={() => onDragStart(field.id)}
+      draggable={canManage}
+      onDragStart={() => canManage && onDragStart(field.id)}
       onDragOver={(e) => { e.preventDefault(); onDragOver(e); }}
-      onDrop={() => onDrop(field.id)}
+      onDrop={() => canManage && onDrop(field.id)}
       className={cn(
         "group flex items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:bg-card",
         !field.isEnabled && "opacity-50",
       )}
     >
-      <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground/40 group-hover:text-muted-foreground/80 active:cursor-grabbing" />
+      {canManage && (
+        <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground/40 group-hover:text-muted-foreground/80 active:cursor-grabbing" />
+      )}
 
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="min-w-0 flex-1">
@@ -128,34 +130,42 @@ function FieldRow({
             Required
           </span>
         )}
+
+        {!field.isEnabled && (
+          <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            Disabled
+          </span>
+        )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          title={field.isEnabled ? "Disable field" : "Enable field"}
-          onClick={() => onToggle(field.id)}
-          className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          {field.isEnabled
-            ? <ToggleRight className="h-4 w-4 text-green-500" />
-            : <ToggleLeft className="h-4 w-4" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => onEdit(field)}
-          className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(field.id)}
-          className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      {canManage && (
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            title={field.isEnabled ? "Disable field" : "Enable field"}
+            onClick={() => onToggle(field.id)}
+            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {field.isEnabled
+              ? <ToggleRight className="h-4 w-4 text-green-500" />
+              : <ToggleLeft className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit(field)}
+            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(field.id)}
+            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -163,12 +173,11 @@ function FieldRow({
 // ── Field form (create / edit) ────────────────────────────────────────────────
 
 function FieldForm({
-  initial, module, onSave, onCancel, saving,
+  initial, module, onSave, saving,
 }: {
   initial?: FormField | null;
   module: "incident" | "audit";
   onSave: (data: typeof EMPTY_FORM & { module: string }) => void;
-  onCancel: () => void;
   saving: boolean;
 }) {
   const [form, setForm] = useState(() =>
@@ -361,10 +370,7 @@ function FieldForm({
 
 function FormBuilderPage() {
   const { user } = useAuth();
-  const { selectedTenantId } = useTenantContext();
-  const isSuperAdmin = user?.role === "super_admin";
-  const canManage = isSuperAdmin || user?.role === "manager" || user?.role === "tenant_admin";
-  const superAdminNeedsCompany = isSuperAdmin && !selectedTenantId;
+  const canManage = user?.role === "manager" || user?.role === "tenant_admin";
 
   const [activeTab, setActiveTab] = useState<"incident" | "audit">("incident");
   const [fields, setFields] = useState<FormField[]>([]);
@@ -406,11 +412,9 @@ function FormBuilderPage() {
     const [moved] = reordered.splice(fromIdx, 1);
     reordered.splice(toIdx, 0, moved);
 
-    // Update state optimistically
     const otherFields = fields.filter((f) => f.module !== currentModule);
     setFields([...otherFields, ...reordered]);
 
-    // Persist order
     http.put(ENDPOINTS.formFields.reorder, { ids: reordered.map((f) => f.id) })
       .catch(() => toast.error("Failed to save order"));
 
@@ -429,7 +433,7 @@ function FormBuilderPage() {
 
   // ── Delete ───────────────────────────────────────────────────────────────
   async function handleDelete(id: string) {
-    if (!confirm("Delete this custom field? This will not remove existing data.")) return;
+    if (!confirm("Delete this custom field? Existing data will not be removed.")) return;
     try {
       await http.delete(ENDPOINTS.formFields.remove(id));
       setFields((prev) => prev.filter((f) => f.id !== id));
@@ -486,21 +490,13 @@ function FormBuilderPage() {
               <Button
                 size="sm"
                 onClick={openCreate}
-                disabled={superAdminNeedsCompany}
-                title={superAdminNeedsCompany ? "Select a company from the header first" : undefined}
-                className="gap-2 [background:var(--gradient-primary)] text-primary-foreground hover:brightness-110 disabled:opacity-50"
+                className="gap-2 [background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
               >
                 <Plus className="h-4 w-4" /> Add Field
               </Button>
             )}
           </div>
         </div>
-
-        {superAdminNeedsCompany && (
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-400">
-            Select a company from the header to manage form fields for that company's users.
-          </div>
-        )}
 
         {/* Module tabs */}
         <div className="flex gap-1 rounded-lg border border-border/50 bg-muted/30 p-1 w-fit">
@@ -541,7 +537,7 @@ function FormBuilderPage() {
             <p className="mt-1 text-xs text-muted-foreground">
               {canManage
                 ? `Add fields to extend the ${activeTab} form.`
-                : "Custom fields have not been added yet."}
+                : "No custom fields have been configured yet."}
             </p>
             {canManage && (
               <Button size="sm" onClick={openCreate} className="mt-4 gap-2 [background:var(--gradient-primary)] text-primary-foreground">
@@ -561,12 +557,13 @@ function FormBuilderPage() {
                 onDragStart={handleDragStart}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
+                canManage={canManage}
               />
             ))}
           </div>
         )}
 
-        {!canManage && (
+        {!canManage && moduleFields.length > 0 && (
           <p className="text-center text-xs text-muted-foreground">
             Only managers and administrators can create or edit form fields.
           </p>
@@ -574,41 +571,42 @@ function FormBuilderPage() {
       </div>
 
       {/* Create / Edit drawer */}
-      <ModuleDrawer
-        open={drawerOpen}
-        onOpenChange={(o) => { setDrawerOpen(o); if (!o) setEditingField(null); }}
-        title={editingField
-          ? `Edit ${editingField.module === "incident" ? "Incident" : "Audit"} Field`
-          : `Add Field → ${activeTab === "incident" ? "Incident Report" : "Audit"}`}
-        description={
-          editingField
-            ? "Update label, type, options or toggle required/enabled."
-            : `Field will appear in the ${activeTab === "incident" ? "Incident Report" : "Audit"} create form.`
-        }
-        size="md"
-        footer={
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-            <Button
-              form="field-form"
-              type="submit"
-              disabled={saving}
-              className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
-            >
-              {saving ? "Saving…" : editingField ? "Save Changes" : "Create Field"}
-            </Button>
-          </div>
-        }
-      >
-        <FieldForm
-          key={editingField?.id ?? "new"}
-          initial={editingField}
-          module={activeTab}
-          onSave={handleSave}
-          onCancel={() => setDrawerOpen(false)}
-          saving={saving}
-        />
-      </ModuleDrawer>
+      {canManage && (
+        <ModuleDrawer
+          open={drawerOpen}
+          onOpenChange={(o) => { setDrawerOpen(o); if (!o) setEditingField(null); }}
+          title={editingField
+            ? `Edit ${editingField.module === "incident" ? "Incident" : "Audit"} Field`
+            : `Add Field → ${activeTab === "incident" ? "Incident Report" : "Audit"}`}
+          description={
+            editingField
+              ? "Update label, type, options or toggle required/enabled."
+              : `Field will appear in the ${activeTab === "incident" ? "Incident Report" : "Audit"} create form.`
+          }
+          size="md"
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
+              <Button
+                form="field-form"
+                type="submit"
+                disabled={saving}
+                className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
+              >
+                {saving ? "Saving…" : editingField ? "Save Changes" : "Create Field"}
+              </Button>
+            </div>
+          }
+        >
+          <FieldForm
+            key={editingField?.id ?? "new"}
+            initial={editingField}
+            module={activeTab}
+            onSave={handleSave}
+            saving={saving}
+          />
+        </ModuleDrawer>
+      )}
     </AppShell>
   );
 }
