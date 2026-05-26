@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Plus, RefreshCw, ClipboardCheck, ChevronRight,
-  CheckCircle2, Clock, AlertTriangle, BarChart3,
+  CheckCircle2, Clock, AlertTriangle, BarChart3, Trash2,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuditStore } from "@/lib/stores/audit.store";
 import { auditService, type CreateAuditPayload } from "@/lib/api/services/audit.service";
-import { usePermissions } from "@/lib/auth-store";
+import { usePermissions, useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -16,12 +16,23 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FilterBar } from "@/components/shared/FilterBar";
 import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { cn } from "@/lib/utils";
+import { http } from "@/lib/api/axios";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+import { toast } from "sonner";
+
+type FieldType = "TEXT"|"TEXTAREA"|"NUMBER"|"SELECT"|"MULTISELECT"|"CHECKBOX"|"DATE"|"URL"|"EMAIL"|"PHONE";
+interface FormField {
+  id: string; module: string; name: string; label: string; type: FieldType;
+  placeholder?: string|null; helpText?: string|null; isRequired: boolean;
+  isEnabled: boolean; options?: {label:string;value:string}[]|null; order: number;
+}
 
 export const Route = createFileRoute("/_authenticated/app/audits/")({
   head: () => ({
@@ -77,6 +88,8 @@ const EMPTY_FORM: CreateAuditPayload = {
 function AuditsPage() {
   const { audits, loading, initialized, fetchAudits, createAudit } = useAuditStore();
   const can = usePermissions();
+  const { user } = useAuth();
+  const canManage = user?.role === "manager" || user?.role === "tenant_admin";
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
 
@@ -85,11 +98,34 @@ function AuditsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState<CreateAuditPayload>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [customFields, setCustomFields] = useState<FormField[]>([]);
+  const [metadata, setMetadata] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     if (!initialized) fetchAudits();
     auditService.stats().then(setStats).catch(() => {});
   }, [initialized, fetchAudits]);
+
+  useEffect(() => {
+    http.get<any>(`${ENDPOINTS.formFields.list}?module=audit&enabled=true`)
+      .then((res) => setCustomFields(res.data?.data ?? []))
+      .catch((err) => console.error("[FormFields] audit fetch failed", err));
+  }, []);
+
+  function handleMeta(name: string, val: unknown) {
+    setMetadata((prev) => ({ ...prev, [name]: val }));
+  }
+
+  async function handleDeleteField(id: string) {
+    if (!confirm("Remove this field from the form? It will be deleted for all future entries.")) return;
+    try {
+      await http.delete(ENDPOINTS.formFields.remove(id));
+      setCustomFields((prev) => prev.filter((f) => f.id !== id));
+      toast.success("Field removed");
+    } catch {
+      toast.error("Failed to remove field");
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -117,9 +153,11 @@ function AuditsPage() {
         ...form,
         scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
         dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
+      setMetadata({});
     } finally {
       setSubmitting(false);
     }
@@ -330,6 +368,53 @@ function AuditsPage() {
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
           </div>
+
+          {customFields.length > 0 && (
+            <div className="space-y-4 border-t border-border/40 pt-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Additional Fields</p>
+              {customFields.map((f) => {
+                const opts = (f.options ?? []) as { label: string; value: string }[];
+                const value = metadata[f.name];
+                const strVal = String(value ?? "");
+                const labelEl = (
+                  <Label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+                    {f.label}{f.isRequired && <span className="ml-1 text-red-500">*</span>}
+                  </Label>
+                );
+
+                let content: React.ReactNode;
+                if (f.type === "TEXTAREA") {
+                  content = (<>{labelEl}<Textarea value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} rows={3} required={f.isRequired} />{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+                } else if (f.type === "SELECT") {
+                  content = (<>{labelEl}<Select value={strVal} onValueChange={(v) => handleMeta(f.name, v)}><SelectTrigger className="h-9"><SelectValue placeholder={f.placeholder ?? "Select…"} /></SelectTrigger><SelectContent>{opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+                } else if (f.type === "MULTISELECT") {
+                  const sel: string[] = Array.isArray(value) ? (value as string[]) : [];
+                  content = (<>{labelEl}<div className="space-y-1.5 rounded-lg border border-border/50 p-3">{opts.map((o) => (<label key={o.value} className="flex cursor-pointer items-center gap-2.5"><input type="checkbox" checked={sel.includes(o.value)} onChange={(e) => handleMeta(f.name, e.target.checked ? [...sel, o.value] : sel.filter((v) => v !== o.value))} className="h-4 w-4 rounded border-border accent-primary" /><span className="text-sm">{o.label}</span></label>))}</div>{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+                } else if (f.type === "CHECKBOX") {
+                  content = (<div className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3"><Switch id={f.name} checked={Boolean(value)} onCheckedChange={(v) => handleMeta(f.name, v)} /><Label htmlFor={f.name} className="cursor-pointer text-sm">{f.label}</Label></div>);
+                } else {
+                  const typeMap: Record<string, string> = { DATE: "date", EMAIL: "email", PHONE: "tel", URL: "url", NUMBER: "number", TEXT: "text" };
+                  content = (<>{labelEl}<Input type={typeMap[f.type] ?? "text"} value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} required={f.isRequired} className="h-9" />{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+                }
+
+                return (
+                  <div key={f.id} className="group relative">
+                    {content}
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteField(f.id)}
+                        title="Remove this field from the form"
+                        className="absolute right-0 top-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </form>
       </ModuleDrawer>
     </AppShell>

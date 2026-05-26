@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Plus, RefreshCw, ShieldAlert, Send, AlertTriangle,
-  TrendingUp, Clock, CheckCircle2, ChevronRight,
+  TrendingUp, Clock, CheckCircle2, ChevronRight, Trash2,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
@@ -10,17 +10,28 @@ import { SurfaceCard } from "@/components/shared/Card";
 import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { FilterBar, type FilterConfig } from "@/components/shared/FilterBar";
 import { useIncidentStore } from "@/lib/stores/incident.store";
-import { usePermissions } from "@/lib/auth-store";
+import { usePermissions, useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { http } from "@/lib/api/axios";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+import { toast } from "sonner";
+
+type FieldType = "TEXT"|"TEXTAREA"|"NUMBER"|"SELECT"|"MULTISELECT"|"CHECKBOX"|"DATE"|"URL"|"EMAIL"|"PHONE";
+interface FormField {
+  id: string; module: string; name: string; label: string; type: FieldType;
+  placeholder?: string|null; helpText?: string|null; isRequired: boolean;
+  isEnabled: boolean; options?: {label:string;value:string}[]|null; order: number;
+}
 
 export const Route = createFileRoute("/_authenticated/app/incidents/")({
   head: () => ({
@@ -113,6 +124,8 @@ const PRIORITY_MAP: Record<string, number> = { LOW: 1, MEDIUM: 3, HIGH: 4, CRITI
 // ── Create Drawer Form ────────────────────────────────────────────────────────
 function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
   const { createIncident } = useIncidentStore();
+  const { user } = useAuth();
+  const canManage = user?.role === "manager" || user?.role === "tenant_admin";
   const [submitting, setSubmitting] = useState(false);
   const [descError, setDescError] = useState("");
   const [title, setTitle] = useState("");
@@ -123,6 +136,29 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
   const [priority, setPriority] = useState("MEDIUM");
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [location, setLocation] = useState("");
+  const [customFields, setCustomFields] = useState<FormField[]>([]);
+  const [metadata, setMetadata] = useState<Record<string, unknown>>({});
+
+  useEffect(() => {
+    http.get<any>(`${ENDPOINTS.formFields.list}?module=incident&enabled=true`)
+      .then((res) => setCustomFields(res.data?.data ?? []))
+      .catch((err) => console.error("[FormFields] incident fetch failed", err));
+  }, []);
+
+  function handleMeta(name: string, val: unknown) {
+    setMetadata((prev) => ({ ...prev, [name]: val }));
+  }
+
+  async function handleDeleteField(id: string) {
+    if (!confirm("Remove this field from the form? It will be deleted for all future entries.")) return;
+    try {
+      await http.delete(ENDPOINTS.formFields.remove(id));
+      setCustomFields((prev) => prev.filter((f) => f.id !== id));
+      toast.success("Field removed");
+    } catch {
+      toast.error("Failed to remove field");
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +179,7 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
         priority: PRIORITY_MAP[priority],
         occurredAt: new Date(occurredAt).toISOString(),
         location: location.trim() || undefined,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
       onSuccess();
     } finally {
@@ -283,6 +320,53 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
           ))}
         </div>
       </div>
+
+      {customFields.length > 0 && (
+        <div className="space-y-4 border-t border-border/40 pt-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Additional Fields</p>
+          {customFields.map((f) => {
+            const opts = (f.options ?? []) as { label: string; value: string }[];
+            const value = metadata[f.name];
+            const strVal = String(value ?? "");
+            const labelEl = (
+              <Label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+                {f.label}{f.isRequired && <span className="ml-1 text-red-500">*</span>}
+              </Label>
+            );
+
+            let content: React.ReactNode;
+            if (f.type === "TEXTAREA") {
+              content = (<>{labelEl}<Textarea value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} rows={3} required={f.isRequired} />{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+            } else if (f.type === "SELECT") {
+              content = (<>{labelEl}<Select value={strVal} onValueChange={(v) => handleMeta(f.name, v)}><SelectTrigger className="h-9"><SelectValue placeholder={f.placeholder ?? "Select…"} /></SelectTrigger><SelectContent>{opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+            } else if (f.type === "MULTISELECT") {
+              const sel: string[] = Array.isArray(value) ? (value as string[]) : [];
+              content = (<>{labelEl}<div className="space-y-1.5 rounded-lg border border-border/50 p-3">{opts.map((o) => (<label key={o.value} className="flex cursor-pointer items-center gap-2.5"><input type="checkbox" checked={sel.includes(o.value)} onChange={(e) => handleMeta(f.name, e.target.checked ? [...sel, o.value] : sel.filter((v) => v !== o.value))} className="h-4 w-4 rounded border-border accent-primary" /><span className="text-sm">{o.label}</span></label>))}</div>{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+            } else if (f.type === "CHECKBOX") {
+              content = (<div className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3"><Switch id={f.name} checked={Boolean(value)} onCheckedChange={(v) => handleMeta(f.name, v)} /><Label htmlFor={f.name} className="cursor-pointer text-sm">{f.label}</Label></div>);
+            } else {
+              const typeMap: Record<string, string> = { DATE: "date", EMAIL: "email", PHONE: "tel", URL: "url", NUMBER: "number", TEXT: "text" };
+              content = (<>{labelEl}<Input type={typeMap[f.type] ?? "text"} value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} required={f.isRequired} className="h-9" />{f.helpText && <p className="mt-1 text-[11px] text-muted-foreground">{f.helpText}</p>}</>);
+            }
+
+            return (
+              <div key={f.id} className="group relative">
+                {content}
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteField(f.id)}
+                    title="Remove this field from the form"
+                    className="absolute right-0 top-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </form>
   );
 }
