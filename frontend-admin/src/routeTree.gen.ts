@@ -28,6 +28,7 @@ import { Route as AuthenticatedAdminPpeRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminNotificationsRouteImport } from './routes/_authenticated/admin/notifications'
 import { Route as AuthenticatedAdminInductionsRouteImport } from './routes/_authenticated/admin/inductions'
 import { Route as AuthenticatedAdminIncidentsRouteImport } from './routes/_authenticated/admin/incidents'
+import { Route as AuthenticatedAdminFormFieldsRouteImport } from './routes/_authenticated/admin/form-fields'
 import { Route as AuthenticatedAdminFeedbackRouteImport } from './routes/_authenticated/admin/feedback'
 import { Route as AuthenticatedAdminDocumentsRouteImport } from './routes/_authenticated/admin/documents'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin/dashboard'
@@ -151,6 +152,12 @@ const AuthenticatedAdminIncidentsRoute =
   AuthenticatedAdminIncidentsRouteImport.update({
     id: '/incidents',
     path: '/incidents',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminFormFieldsRoute =
+  AuthenticatedAdminFormFieldsRouteImport.update({
+    id: '/form-fields',
+    path: '/form-fields',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminFeedbackRoute =
@@ -298,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/feedback': typeof AuthenticatedAdminFeedbackRoute
+  '/admin/form-fields': typeof AuthenticatedAdminFormFieldsRoute
   '/admin/incidents': typeof AuthenticatedAdminIncidentsRouteWithChildren
   '/admin/inductions': typeof AuthenticatedAdminInductionsRouteWithChildren
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
@@ -339,6 +347,7 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/admin/feedback': typeof AuthenticatedAdminFeedbackRoute
+  '/admin/form-fields': typeof AuthenticatedAdminFormFieldsRoute
   '/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/roles': typeof AuthenticatedAdminRolesRouteWithChildren
@@ -378,6 +387,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/documents': typeof AuthenticatedAdminDocumentsRoute
   '/_authenticated/admin/feedback': typeof AuthenticatedAdminFeedbackRoute
+  '/_authenticated/admin/form-fields': typeof AuthenticatedAdminFormFieldsRoute
   '/_authenticated/admin/incidents': typeof AuthenticatedAdminIncidentsRouteWithChildren
   '/_authenticated/admin/inductions': typeof AuthenticatedAdminInductionsRouteWithChildren
   '/_authenticated/admin/notifications': typeof AuthenticatedAdminNotificationsRoute
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/documents'
     | '/admin/feedback'
+    | '/admin/form-fields'
     | '/admin/incidents'
     | '/admin/inductions'
     | '/admin/notifications'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/documents'
     | '/admin/feedback'
+    | '/admin/form-fields'
     | '/admin/notifications'
     | '/admin/reports'
     | '/admin/roles'
@@ -501,6 +513,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/documents'
     | '/_authenticated/admin/feedback'
+    | '/_authenticated/admin/form-fields'
     | '/_authenticated/admin/incidents'
     | '/_authenticated/admin/inductions'
     | '/_authenticated/admin/notifications'
@@ -672,6 +685,13 @@ declare module '@tanstack/react-router' {
       path: '/incidents'
       fullPath: '/admin/incidents'
       preLoaderRoute: typeof AuthenticatedAdminIncidentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/form-fields': {
+      id: '/_authenticated/admin/form-fields'
+      path: '/form-fields'
+      fullPath: '/admin/form-fields'
+      preLoaderRoute: typeof AuthenticatedAdminFormFieldsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/feedback': {
@@ -978,6 +998,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDocumentsRoute: typeof AuthenticatedAdminDocumentsRoute
   AuthenticatedAdminFeedbackRoute: typeof AuthenticatedAdminFeedbackRoute
+  AuthenticatedAdminFormFieldsRoute: typeof AuthenticatedAdminFormFieldsRoute
   AuthenticatedAdminIncidentsRoute: typeof AuthenticatedAdminIncidentsRouteWithChildren
   AuthenticatedAdminInductionsRoute: typeof AuthenticatedAdminInductionsRouteWithChildren
   AuthenticatedAdminNotificationsRoute: typeof AuthenticatedAdminNotificationsRoute
@@ -1002,6 +1023,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDocumentsRoute: AuthenticatedAdminDocumentsRoute,
   AuthenticatedAdminFeedbackRoute: AuthenticatedAdminFeedbackRoute,
+  AuthenticatedAdminFormFieldsRoute: AuthenticatedAdminFormFieldsRoute,
   AuthenticatedAdminIncidentsRoute:
     AuthenticatedAdminIncidentsRouteWithChildren,
   AuthenticatedAdminInductionsRoute:

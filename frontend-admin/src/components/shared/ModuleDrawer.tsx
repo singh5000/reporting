@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { Sheet, SheetContent, SheetPortal, SheetOverlay } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -33,16 +33,15 @@ export function ModuleDrawer({
 }: ModuleDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetPortal>
-        <SheetOverlay className="bg-black/40 backdrop-blur-[2px]" />
-        <SheetContent
-          side="right"
-          className={cn(
-            SIZE_CLASSES[size],
-            "flex flex-col gap-0 p-0 border-l border-border/60 bg-background shadow-2xl",
-          )}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+      <SheetContent
+        side="right"
+        showClose={false}
+        className={cn(
+          SIZE_CLASSES[size],
+          "flex flex-col gap-0 p-0 border-l border-border/60 bg-background shadow-2xl",
+        )}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
           {/* Header */}
           <div className="flex items-start justify-between border-b border-border/60 px-6 py-4 shrink-0">
             <div className="min-w-0 pr-4">
@@ -78,8 +77,7 @@ export function ModuleDrawer({
               )}
             </div>
           )}
-        </SheetContent>
-      </SheetPortal>
+      </SheetContent>
     </Sheet>
   );
 }

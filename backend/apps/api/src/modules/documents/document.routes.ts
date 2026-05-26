@@ -4,7 +4,7 @@ import { authorize } from "../../middleware/authorize";
 import { prisma, basePrisma } from "@360crd/database";
 import { z } from "zod";
 import { createHash } from "crypto";
-import { uploadFile, getPresignedDownloadUrl, deleteFile, buildStorageKey } from "../../shared/storage/s3.service";
+import { uploadFile, getPresignedDownloadUrl, deleteFile, buildStorageKey } from "../../shared/storage/storage.service";
 import { ValidationError, NotFoundError } from "../../shared/errors/http.errors";
 import { AuditLogService } from "../audit-logs/audit-log.service";
 
@@ -57,7 +57,6 @@ export default async function documentRoutes(fastify: FastifyInstance) {
       prisma.document.findMany({
         where, skip: (page - 1) * limit, take: limit,
         orderBy: { createdAt: "desc" },
-        include: { uploadedBy: { select: { id: true, firstName: true, lastName: true } } },
         select: {
           id: true, title: true, filename: true, fileUrl: true,
           category: true, status: true, version: true, tags: true,
@@ -109,6 +108,9 @@ export default async function documentRoutes(fastify: FastifyInstance) {
 
     const r = req as any;
     const tenantId = r.tenantId;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, error: { code: "NO_TENANT", message: "Select a company before uploading" } });
+    }
     const fields = data.fields as any;
     const title = fields?.title?.value || data.filename;
     const category = fields?.category?.value || "GENERAL";

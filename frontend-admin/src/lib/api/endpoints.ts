@@ -259,6 +259,15 @@ export const ENDPOINTS = {
   activity: {
     list: "/activity",
   },
+
+  formFields: {
+    list:   "/form-fields",
+    create: "/form-fields",
+    update: (id: string) => `/form-fields/${id}`,
+    remove: (id: string) => `/form-fields/${id}`,
+    toggle: (id: string) => `/form-fields/${id}/toggle`,
+    reorder: "/form-fields/reorder",
+  },
 } as const;
 
 export type Endpoints = typeof ENDPOINTS;

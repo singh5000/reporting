@@ -16,10 +16,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { http } from "@/lib/api/axios";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+import type { FormField } from "@/routes/_authenticated/admin/form-fields";
 
 export const Route = createFileRoute("/_authenticated/admin/incidents/")({
   head: () => ({
@@ -91,6 +95,126 @@ const INCIDENT_TYPES = ["SAFETY", "ENVIRONMENTAL", "QUALITY", "SECURITY", "NEAR_
 const SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
+// ── Dynamic field renderer ────────────────────────────────────────────────────
+function DynamicFieldInput({
+  field, value, onChange,
+}: {
+  field: FormField;
+  value: unknown;
+  onChange: (name: string, val: unknown) => void;
+}) {
+  const opts = (field.options ?? []) as { label: string; value: string }[];
+  const strVal = String(value ?? "");
+
+  const labelEl = (
+    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      {field.label}
+      {field.isRequired && <span className="ml-1 text-red-500">*</span>}
+    </Label>
+  );
+
+  switch (field.type) {
+    case "TEXTAREA":
+      return (
+        <div className="space-y-1.5">
+          {labelEl}
+          <Textarea
+            value={strVal}
+            onChange={(e) => onChange(field.name, e.target.value)}
+            placeholder={field.placeholder ?? ""}
+            rows={3}
+            required={field.isRequired}
+          />
+          {field.helpText && <p className="text-[11px] text-muted-foreground">{field.helpText}</p>}
+        </div>
+      );
+    case "NUMBER":
+      return (
+        <div className="space-y-1.5">
+          {labelEl}
+          <Input
+            type="number"
+            value={strVal}
+            onChange={(e) => onChange(field.name, e.target.value)}
+            placeholder={field.placeholder ?? ""}
+            required={field.isRequired}
+          />
+          {field.helpText && <p className="text-[11px] text-muted-foreground">{field.helpText}</p>}
+        </div>
+      );
+    case "SELECT":
+      return (
+        <div className="space-y-1.5">
+          {labelEl}
+          <Select value={strVal} onValueChange={(v) => onChange(field.name, v)}>
+            <SelectTrigger><SelectValue placeholder={field.placeholder ?? "Select…"} /></SelectTrigger>
+            <SelectContent>
+              {opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {field.helpText && <p className="text-[11px] text-muted-foreground">{field.helpText}</p>}
+        </div>
+      );
+    case "MULTISELECT": {
+      const selected: string[] = Array.isArray(value) ? (value as string[]) : [];
+      return (
+        <div className="space-y-1.5">
+          {labelEl}
+          <div className="space-y-1.5 rounded-lg border border-border/50 p-3">
+            {opts.map((o) => (
+              <label key={o.value} className="flex cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o.value)}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...selected, o.value]
+                      : selected.filter((v) => v !== o.value);
+                    onChange(field.name, next);
+                  }}
+                  className="h-4 w-4 rounded border-border accent-primary"
+                />
+                <span className="text-sm">{o.label}</span>
+              </label>
+            ))}
+          </div>
+          {field.helpText && <p className="text-[11px] text-muted-foreground">{field.helpText}</p>}
+        </div>
+      );
+    }
+    case "CHECKBOX":
+      return (
+        <div className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3">
+          <Switch
+            id={field.name}
+            checked={Boolean(value)}
+            onCheckedChange={(v) => onChange(field.name, v)}
+          />
+          <Label htmlFor={field.name} className="cursor-pointer text-sm">{field.label}</Label>
+          {field.isRequired && <span className="text-xs text-red-500">*</span>}
+        </div>
+      );
+    default: {
+      const typeMap: Record<string, string> = {
+        DATE: "date", EMAIL: "email", PHONE: "tel", URL: "url", TEXT: "text",
+      };
+      return (
+        <div className="space-y-1.5">
+          {labelEl}
+          <Input
+            type={typeMap[field.type] ?? "text"}
+            value={strVal}
+            onChange={(e) => onChange(field.name, e.target.value)}
+            placeholder={field.placeholder ?? ""}
+            required={field.isRequired}
+          />
+          {field.helpText && <p className="text-[11px] text-muted-foreground">{field.helpText}</p>}
+        </div>
+      );
+    }
+  }
+}
+
 function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
   const { createIncident } = useIncidentStore();
   const [submitting, setSubmitting] = useState(false);
@@ -101,6 +225,18 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
   const [priority, setPriority] = useState("MEDIUM");
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [location, setLocation] = useState("");
+  const [customFields, setCustomFields] = useState<FormField[]>([]);
+  const [metadata, setMetadata] = useState<Record<string, unknown>>({});
+
+  useEffect(() => {
+    http.get<any>(`${ENDPOINTS.formFields.list}?module=incident&enabled=true`)
+      .then((res) => setCustomFields(res.data?.data ?? []))
+      .catch(() => {});
+  }, []);
+
+  function handleMeta(name: string, val: unknown) {
+    setMetadata((prev) => ({ ...prev, [name]: val }));
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +251,7 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
         priority,
         occurredAt: new Date(occurredAt).toISOString(),
         location: location.trim() || undefined,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
       onSuccess();
     } finally {
@@ -236,6 +373,22 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
           ))}
         </div>
       </div>
+
+      {customFields.length > 0 && (
+        <div className="space-y-4 border-t border-border/40 pt-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Additional Fields
+          </p>
+          {customFields.map((f) => (
+            <DynamicFieldInput
+              key={f.id}
+              field={f}
+              value={metadata[f.name]}
+              onChange={handleMeta}
+            />
+          ))}
+        </div>
+      )}
     </form>
   );
 }

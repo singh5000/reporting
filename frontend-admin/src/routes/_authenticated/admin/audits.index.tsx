@@ -11,6 +11,7 @@ import { usePermissions, useAuth } from "@/lib/auth-store";
 import { useTenantContext } from "@/lib/stores/tenant-context.store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -23,6 +24,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { FilterBar } from "@/components/shared/FilterBar";
 import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { cn } from "@/lib/utils";
+import { http } from "@/lib/api/axios";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+import type { FormField } from "@/routes/_authenticated/admin/form-fields";
 
 export const Route = createFileRoute("/_authenticated/admin/audits/")({
   head: () => ({
@@ -89,10 +93,15 @@ function AuditsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState<CreateAuditPayload>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [customFields, setCustomFields] = useState<FormField[]>([]);
+  const [metadata, setMetadata] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     if (!initialized) fetchAudits();
     auditService.stats().then(setStats).catch(() => {});
+    http.get<any>(`${ENDPOINTS.formFields.list}?module=audit&enabled=true`)
+      .then((res) => setCustomFields(res.data?.data ?? []))
+      .catch(() => {});
   }, [initialized, fetchAudits]);
 
   const filtered = useMemo(() => {
@@ -113,6 +122,10 @@ function AuditsPage() {
     { label: "Avg Score", value: stats?.avgScore ? `${stats.avgScore.toFixed(0)}%` : "—", icon: BarChart3, color: "text-primary" },
   ];
 
+  function handleMeta(name: string, val: unknown) {
+    setMetadata((prev) => ({ ...prev, [name]: val }));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -122,9 +135,11 @@ function AuditsPage() {
         ...(isSuperAdmin && selectedTenantId ? { tenantId: selectedTenantId } : {}),
         scheduledAt: form.scheduledAt ? `${form.scheduledAt}T00:00:00.000Z` : undefined,
         dueDate: form.dueDate ? `${form.dueDate}T00:00:00.000Z` : undefined,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
+      setMetadata({});
     } finally {
       setSubmitting(false);
     }
@@ -333,6 +348,67 @@ function AuditsPage() {
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
           </div>
+
+          {customFields.length > 0 && (
+            <div className="space-y-4 border-t border-border/40 pt-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Additional Fields
+              </p>
+              {customFields.map((f) => {
+                const opts = (f.options ?? []) as { label: string; value: string }[];
+                const value = metadata[f.name];
+                const strVal = String(value ?? "");
+                const labelEl = (
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {f.label}{f.isRequired && <span className="ml-1 text-red-500">*</span>}
+                  </Label>
+                );
+                if (f.type === "TEXTAREA") return (
+                  <div key={f.id} className="space-y-1.5">{labelEl}
+                    <Textarea value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} rows={3} required={f.isRequired} />
+                    {f.helpText && <p className="text-[11px] text-muted-foreground">{f.helpText}</p>}
+                  </div>
+                );
+                if (f.type === "SELECT") return (
+                  <div key={f.id} className="space-y-1.5">{labelEl}
+                    <Select value={strVal} onValueChange={(v) => handleMeta(f.name, v)}>
+                      <SelectTrigger><SelectValue placeholder={f.placeholder ?? "Select…"} /></SelectTrigger>
+                      <SelectContent>{opts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {f.helpText && <p className="text-[11px] text-muted-foreground">{f.helpText}</p>}
+                  </div>
+                );
+                if (f.type === "MULTISELECT") {
+                  const sel: string[] = Array.isArray(value) ? (value as string[]) : [];
+                  return (
+                    <div key={f.id} className="space-y-1.5">{labelEl}
+                      <div className="space-y-1.5 rounded-lg border border-border/50 p-3">
+                        {opts.map((o) => (
+                          <label key={o.value} className="flex cursor-pointer items-center gap-2.5">
+                            <input type="checkbox" checked={sel.includes(o.value)} onChange={(e) => handleMeta(f.name, e.target.checked ? [...sel, o.value] : sel.filter((v) => v !== o.value))} className="h-4 w-4 rounded border-border accent-primary" />
+                            <span className="text-sm">{o.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                if (f.type === "CHECKBOX") return (
+                  <div key={f.id} className="flex items-center gap-3 rounded-lg border border-border/50 px-4 py-3">
+                    <Switch id={f.name} checked={Boolean(value)} onCheckedChange={(v) => handleMeta(f.name, v)} />
+                    <Label htmlFor={f.name} className="cursor-pointer text-sm">{f.label}</Label>
+                  </div>
+                );
+                const typeMap: Record<string, string> = { DATE: "date", EMAIL: "email", PHONE: "tel", URL: "url", NUMBER: "number", TEXT: "text" };
+                return (
+                  <div key={f.id} className="space-y-1.5">{labelEl}
+                    <Input type={typeMap[f.type] ?? "text"} value={strVal} onChange={(e) => handleMeta(f.name, e.target.value)} placeholder={f.placeholder ?? ""} required={f.isRequired} />
+                    {f.helpText && <p className="text-[11px] text-muted-foreground">{f.helpText}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </form>
       </ModuleDrawer>
     </AppShell>

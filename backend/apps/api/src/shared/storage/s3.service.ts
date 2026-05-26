@@ -3,6 +3,8 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../../config";
@@ -21,6 +23,22 @@ const s3 = new S3Client({
     : {}),
 });
 
+let bucketReady = false;
+
+async function ensureBucket(): Promise<void> {
+  if (bucketReady) return;
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: config.storage.bucket }));
+  } catch {
+    try {
+      await s3.send(new CreateBucketCommand({ Bucket: config.storage.bucket }));
+    } catch {
+      // bucket may have been created concurrently — ignore
+    }
+  }
+  bucketReady = true;
+}
+
 export interface UploadResult {
   key: string;
   url: string;
@@ -33,6 +51,7 @@ export async function uploadFile(
   mimeType: string,
   metadata?: Record<string, string>
 ): Promise<UploadResult> {
+  await ensureBucket();
   await s3.send(
     new PutObjectCommand({
       Bucket: config.storage.bucket,

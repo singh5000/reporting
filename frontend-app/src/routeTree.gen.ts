@@ -27,10 +27,14 @@ import { Route as AuthenticatedAppDocumentsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app/dashboard'
 import { Route as AuthenticatedAppAuditsRouteImport } from './routes/_authenticated/app/audits'
 import { Route as AuthenticatedAppAssetsRouteImport } from './routes/_authenticated/app/assets'
+import { Route as AuthenticatedAppTrainingIndexRouteImport } from './routes/_authenticated/app/training.index'
 import { Route as AuthenticatedAppPpeIndexRouteImport } from './routes/_authenticated/app/ppe.index'
+import { Route as AuthenticatedAppInductionsIndexRouteImport } from './routes/_authenticated/app/inductions.index'
 import { Route as AuthenticatedAppIncidentsIndexRouteImport } from './routes/_authenticated/app/incidents.index'
 import { Route as AuthenticatedAppAuditsIndexRouteImport } from './routes/_authenticated/app/audits.index'
+import { Route as AuthenticatedAppTrainingIdRouteImport } from './routes/_authenticated/app/training.$id'
 import { Route as AuthenticatedAppPpeIdRouteImport } from './routes/_authenticated/app/ppe.$id'
+import { Route as AuthenticatedAppInductionsIdRouteImport } from './routes/_authenticated/app/inductions.$id'
 import { Route as AuthenticatedAppIncidentsCreateRouteImport } from './routes/_authenticated/app/incidents.create'
 import { Route as AuthenticatedAppIncidentsIdRouteImport } from './routes/_authenticated/app/incidents.$id'
 import { Route as AuthenticatedAppAuditsCreateRouteImport } from './routes/_authenticated/app/audits.create'
@@ -131,11 +135,23 @@ const AuthenticatedAppAssetsRoute = AuthenticatedAppAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppTrainingIndexRoute =
+  AuthenticatedAppTrainingIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAppTrainingRoute,
+  } as any)
 const AuthenticatedAppPpeIndexRoute =
   AuthenticatedAppPpeIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedAppPpeRoute,
+  } as any)
+const AuthenticatedAppInductionsIndexRoute =
+  AuthenticatedAppInductionsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAppInductionsRoute,
   } as any)
 const AuthenticatedAppIncidentsIndexRoute =
   AuthenticatedAppIncidentsIndexRouteImport.update({
@@ -149,11 +165,23 @@ const AuthenticatedAppAuditsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAppAuditsRoute,
   } as any)
+const AuthenticatedAppTrainingIdRoute =
+  AuthenticatedAppTrainingIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAppTrainingRoute,
+  } as any)
 const AuthenticatedAppPpeIdRoute = AuthenticatedAppPpeIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AuthenticatedAppPpeRoute,
 } as any)
+const AuthenticatedAppInductionsIdRoute =
+  AuthenticatedAppInductionsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAppInductionsRoute,
+  } as any)
 const AuthenticatedAppIncidentsCreateRoute =
   AuthenticatedAppIncidentsCreateRouteImport.update({
     id: '/create',
@@ -190,21 +218,25 @@ export interface FileRoutesByFullPath {
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/documents': typeof AuthenticatedAppDocumentsRoute
   '/app/incidents': typeof AuthenticatedAppIncidentsRouteWithChildren
-  '/app/inductions': typeof AuthenticatedAppInductionsRoute
+  '/app/inductions': typeof AuthenticatedAppInductionsRouteWithChildren
   '/app/notifications': typeof AuthenticatedAppNotificationsRoute
   '/app/ppe': typeof AuthenticatedAppPpeRouteWithChildren
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/sites': typeof AuthenticatedAppSitesRoute
-  '/app/training': typeof AuthenticatedAppTrainingRoute
+  '/app/training': typeof AuthenticatedAppTrainingRouteWithChildren
   '/app/waste': typeof AuthenticatedAppWasteRoute
   '/app/audits/$id': typeof AuthenticatedAppAuditsIdRoute
   '/app/audits/create': typeof AuthenticatedAppAuditsCreateRoute
   '/app/incidents/$id': typeof AuthenticatedAppIncidentsIdRoute
   '/app/incidents/create': typeof AuthenticatedAppIncidentsCreateRoute
+  '/app/inductions/$id': typeof AuthenticatedAppInductionsIdRoute
   '/app/ppe/$id': typeof AuthenticatedAppPpeIdRoute
+  '/app/training/$id': typeof AuthenticatedAppTrainingIdRoute
   '/app/audits/': typeof AuthenticatedAppAuditsIndexRoute
   '/app/incidents/': typeof AuthenticatedAppIncidentsIndexRoute
+  '/app/inductions/': typeof AuthenticatedAppInductionsIndexRoute
   '/app/ppe/': typeof AuthenticatedAppPpeIndexRoute
+  '/app/training/': typeof AuthenticatedAppTrainingIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -215,20 +247,22 @@ export interface FileRoutesByTo {
   '/app/assets': typeof AuthenticatedAppAssetsRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/documents': typeof AuthenticatedAppDocumentsRoute
-  '/app/inductions': typeof AuthenticatedAppInductionsRoute
   '/app/notifications': typeof AuthenticatedAppNotificationsRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/sites': typeof AuthenticatedAppSitesRoute
-  '/app/training': typeof AuthenticatedAppTrainingRoute
   '/app/waste': typeof AuthenticatedAppWasteRoute
   '/app/audits/$id': typeof AuthenticatedAppAuditsIdRoute
   '/app/audits/create': typeof AuthenticatedAppAuditsCreateRoute
   '/app/incidents/$id': typeof AuthenticatedAppIncidentsIdRoute
   '/app/incidents/create': typeof AuthenticatedAppIncidentsCreateRoute
+  '/app/inductions/$id': typeof AuthenticatedAppInductionsIdRoute
   '/app/ppe/$id': typeof AuthenticatedAppPpeIdRoute
+  '/app/training/$id': typeof AuthenticatedAppTrainingIdRoute
   '/app/audits': typeof AuthenticatedAppAuditsIndexRoute
   '/app/incidents': typeof AuthenticatedAppIncidentsIndexRoute
+  '/app/inductions': typeof AuthenticatedAppInductionsIndexRoute
   '/app/ppe': typeof AuthenticatedAppPpeIndexRoute
+  '/app/training': typeof AuthenticatedAppTrainingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -243,21 +277,25 @@ export interface FileRoutesById {
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/_authenticated/app/documents': typeof AuthenticatedAppDocumentsRoute
   '/_authenticated/app/incidents': typeof AuthenticatedAppIncidentsRouteWithChildren
-  '/_authenticated/app/inductions': typeof AuthenticatedAppInductionsRoute
+  '/_authenticated/app/inductions': typeof AuthenticatedAppInductionsRouteWithChildren
   '/_authenticated/app/notifications': typeof AuthenticatedAppNotificationsRoute
   '/_authenticated/app/ppe': typeof AuthenticatedAppPpeRouteWithChildren
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
   '/_authenticated/app/sites': typeof AuthenticatedAppSitesRoute
-  '/_authenticated/app/training': typeof AuthenticatedAppTrainingRoute
+  '/_authenticated/app/training': typeof AuthenticatedAppTrainingRouteWithChildren
   '/_authenticated/app/waste': typeof AuthenticatedAppWasteRoute
   '/_authenticated/app/audits/$id': typeof AuthenticatedAppAuditsIdRoute
   '/_authenticated/app/audits/create': typeof AuthenticatedAppAuditsCreateRoute
   '/_authenticated/app/incidents/$id': typeof AuthenticatedAppIncidentsIdRoute
   '/_authenticated/app/incidents/create': typeof AuthenticatedAppIncidentsCreateRoute
+  '/_authenticated/app/inductions/$id': typeof AuthenticatedAppInductionsIdRoute
   '/_authenticated/app/ppe/$id': typeof AuthenticatedAppPpeIdRoute
+  '/_authenticated/app/training/$id': typeof AuthenticatedAppTrainingIdRoute
   '/_authenticated/app/audits/': typeof AuthenticatedAppAuditsIndexRoute
   '/_authenticated/app/incidents/': typeof AuthenticatedAppIncidentsIndexRoute
+  '/_authenticated/app/inductions/': typeof AuthenticatedAppInductionsIndexRoute
   '/_authenticated/app/ppe/': typeof AuthenticatedAppPpeIndexRoute
+  '/_authenticated/app/training/': typeof AuthenticatedAppTrainingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -283,10 +321,14 @@ export interface FileRouteTypes {
     | '/app/audits/create'
     | '/app/incidents/$id'
     | '/app/incidents/create'
+    | '/app/inductions/$id'
     | '/app/ppe/$id'
+    | '/app/training/$id'
     | '/app/audits/'
     | '/app/incidents/'
+    | '/app/inductions/'
     | '/app/ppe/'
+    | '/app/training/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -297,20 +339,22 @@ export interface FileRouteTypes {
     | '/app/assets'
     | '/app/dashboard'
     | '/app/documents'
-    | '/app/inductions'
     | '/app/notifications'
     | '/app/reports'
     | '/app/sites'
-    | '/app/training'
     | '/app/waste'
     | '/app/audits/$id'
     | '/app/audits/create'
     | '/app/incidents/$id'
     | '/app/incidents/create'
+    | '/app/inductions/$id'
     | '/app/ppe/$id'
+    | '/app/training/$id'
     | '/app/audits'
     | '/app/incidents'
+    | '/app/inductions'
     | '/app/ppe'
+    | '/app/training'
   id:
     | '__root__'
     | '/'
@@ -335,10 +379,14 @@ export interface FileRouteTypes {
     | '/_authenticated/app/audits/create'
     | '/_authenticated/app/incidents/$id'
     | '/_authenticated/app/incidents/create'
+    | '/_authenticated/app/inductions/$id'
     | '/_authenticated/app/ppe/$id'
+    | '/_authenticated/app/training/$id'
     | '/_authenticated/app/audits/'
     | '/_authenticated/app/incidents/'
+    | '/_authenticated/app/inductions/'
     | '/_authenticated/app/ppe/'
+    | '/_authenticated/app/training/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -477,12 +525,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAssetsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/training/': {
+      id: '/_authenticated/app/training/'
+      path: '/'
+      fullPath: '/app/training/'
+      preLoaderRoute: typeof AuthenticatedAppTrainingIndexRouteImport
+      parentRoute: typeof AuthenticatedAppTrainingRoute
+    }
     '/_authenticated/app/ppe/': {
       id: '/_authenticated/app/ppe/'
       path: '/'
       fullPath: '/app/ppe/'
       preLoaderRoute: typeof AuthenticatedAppPpeIndexRouteImport
       parentRoute: typeof AuthenticatedAppPpeRoute
+    }
+    '/_authenticated/app/inductions/': {
+      id: '/_authenticated/app/inductions/'
+      path: '/'
+      fullPath: '/app/inductions/'
+      preLoaderRoute: typeof AuthenticatedAppInductionsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppInductionsRoute
     }
     '/_authenticated/app/incidents/': {
       id: '/_authenticated/app/incidents/'
@@ -498,12 +560,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAuditsIndexRouteImport
       parentRoute: typeof AuthenticatedAppAuditsRoute
     }
+    '/_authenticated/app/training/$id': {
+      id: '/_authenticated/app/training/$id'
+      path: '/$id'
+      fullPath: '/app/training/$id'
+      preLoaderRoute: typeof AuthenticatedAppTrainingIdRouteImport
+      parentRoute: typeof AuthenticatedAppTrainingRoute
+    }
     '/_authenticated/app/ppe/$id': {
       id: '/_authenticated/app/ppe/$id'
       path: '/$id'
       fullPath: '/app/ppe/$id'
       preLoaderRoute: typeof AuthenticatedAppPpeIdRouteImport
       parentRoute: typeof AuthenticatedAppPpeRoute
+    }
+    '/_authenticated/app/inductions/$id': {
+      id: '/_authenticated/app/inductions/$id'
+      path: '/$id'
+      fullPath: '/app/inductions/$id'
+      preLoaderRoute: typeof AuthenticatedAppInductionsIdRouteImport
+      parentRoute: typeof AuthenticatedAppInductionsRoute
     }
     '/_authenticated/app/incidents/create': {
       id: '/_authenticated/app/incidents/create'
@@ -572,6 +648,22 @@ const AuthenticatedAppIncidentsRouteWithChildren =
     AuthenticatedAppIncidentsRouteChildren,
   )
 
+interface AuthenticatedAppInductionsRouteChildren {
+  AuthenticatedAppInductionsIdRoute: typeof AuthenticatedAppInductionsIdRoute
+  AuthenticatedAppInductionsIndexRoute: typeof AuthenticatedAppInductionsIndexRoute
+}
+
+const AuthenticatedAppInductionsRouteChildren: AuthenticatedAppInductionsRouteChildren =
+  {
+    AuthenticatedAppInductionsIdRoute: AuthenticatedAppInductionsIdRoute,
+    AuthenticatedAppInductionsIndexRoute: AuthenticatedAppInductionsIndexRoute,
+  }
+
+const AuthenticatedAppInductionsRouteWithChildren =
+  AuthenticatedAppInductionsRoute._addFileChildren(
+    AuthenticatedAppInductionsRouteChildren,
+  )
+
 interface AuthenticatedAppPpeRouteChildren {
   AuthenticatedAppPpeIdRoute: typeof AuthenticatedAppPpeIdRoute
   AuthenticatedAppPpeIndexRoute: typeof AuthenticatedAppPpeIndexRoute
@@ -585,18 +677,34 @@ const AuthenticatedAppPpeRouteChildren: AuthenticatedAppPpeRouteChildren = {
 const AuthenticatedAppPpeRouteWithChildren =
   AuthenticatedAppPpeRoute._addFileChildren(AuthenticatedAppPpeRouteChildren)
 
+interface AuthenticatedAppTrainingRouteChildren {
+  AuthenticatedAppTrainingIdRoute: typeof AuthenticatedAppTrainingIdRoute
+  AuthenticatedAppTrainingIndexRoute: typeof AuthenticatedAppTrainingIndexRoute
+}
+
+const AuthenticatedAppTrainingRouteChildren: AuthenticatedAppTrainingRouteChildren =
+  {
+    AuthenticatedAppTrainingIdRoute: AuthenticatedAppTrainingIdRoute,
+    AuthenticatedAppTrainingIndexRoute: AuthenticatedAppTrainingIndexRoute,
+  }
+
+const AuthenticatedAppTrainingRouteWithChildren =
+  AuthenticatedAppTrainingRoute._addFileChildren(
+    AuthenticatedAppTrainingRouteChildren,
+  )
+
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppAssetsRoute: typeof AuthenticatedAppAssetsRoute
   AuthenticatedAppAuditsRoute: typeof AuthenticatedAppAuditsRouteWithChildren
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
   AuthenticatedAppDocumentsRoute: typeof AuthenticatedAppDocumentsRoute
   AuthenticatedAppIncidentsRoute: typeof AuthenticatedAppIncidentsRouteWithChildren
-  AuthenticatedAppInductionsRoute: typeof AuthenticatedAppInductionsRoute
+  AuthenticatedAppInductionsRoute: typeof AuthenticatedAppInductionsRouteWithChildren
   AuthenticatedAppNotificationsRoute: typeof AuthenticatedAppNotificationsRoute
   AuthenticatedAppPpeRoute: typeof AuthenticatedAppPpeRouteWithChildren
   AuthenticatedAppReportsRoute: typeof AuthenticatedAppReportsRoute
   AuthenticatedAppSitesRoute: typeof AuthenticatedAppSitesRoute
-  AuthenticatedAppTrainingRoute: typeof AuthenticatedAppTrainingRoute
+  AuthenticatedAppTrainingRoute: typeof AuthenticatedAppTrainingRouteWithChildren
   AuthenticatedAppWasteRoute: typeof AuthenticatedAppWasteRoute
 }
 
@@ -606,12 +714,12 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
   AuthenticatedAppDocumentsRoute: AuthenticatedAppDocumentsRoute,
   AuthenticatedAppIncidentsRoute: AuthenticatedAppIncidentsRouteWithChildren,
-  AuthenticatedAppInductionsRoute: AuthenticatedAppInductionsRoute,
+  AuthenticatedAppInductionsRoute: AuthenticatedAppInductionsRouteWithChildren,
   AuthenticatedAppNotificationsRoute: AuthenticatedAppNotificationsRoute,
   AuthenticatedAppPpeRoute: AuthenticatedAppPpeRouteWithChildren,
   AuthenticatedAppReportsRoute: AuthenticatedAppReportsRoute,
   AuthenticatedAppSitesRoute: AuthenticatedAppSitesRoute,
-  AuthenticatedAppTrainingRoute: AuthenticatedAppTrainingRoute,
+  AuthenticatedAppTrainingRoute: AuthenticatedAppTrainingRouteWithChildren,
   AuthenticatedAppWasteRoute: AuthenticatedAppWasteRoute,
 }
 

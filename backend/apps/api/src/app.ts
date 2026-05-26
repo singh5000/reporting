@@ -2,6 +2,8 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
+import { createReadStream, existsSync } from "fs";
+import path from "path";
 import { config } from "./config";
 import { errorHandler } from "./shared/errors/error-handler";
 import { requestContextPlugin } from "./middleware/request-context";
@@ -27,6 +29,7 @@ import ppeRoutes from "./modules/ppe/ppe.routes";
 import assetRoutes from "./modules/assets/asset.routes";
 import wasteRoutes from "./modules/waste/waste.routes";
 import documentRoutes from "./modules/documents/document.routes";
+import formFieldRoutes from "./modules/form-fields/form-field.routes";
 import notificationRoutes from "./modules/notifications/notification.routes";
 import reportRoutes from "./modules/reports/report.routes";
 import activityRoutes from "./modules/activity/activity.routes";
@@ -132,6 +135,19 @@ export async function buildApp() {
 
   app.get("/ping", async () => "pong");
 
+  // ── Local file serving (dev only, when STORAGE_PROVIDER=local) ────────────
+  if (config.storage.provider === "local") {
+    const uploadsDir = path.join(process.cwd(), "uploads");
+    app.get("/uploads/*", async (req, reply) => {
+      const key = (req.params as any)["*"];
+      const filePath = path.join(uploadsDir, key);
+      if (!filePath.startsWith(uploadsDir) || !existsSync(filePath)) {
+        return reply.status(404).send({ success: false, error: { code: "NOT_FOUND", message: "File not found" } });
+      }
+      return reply.send(createReadStream(filePath));
+    });
+  }
+
   // ── API v1 Routes ──────────────────────────────────────────────────────
   await app.register(async (v1) => {
     // Public routes — no auth required, tenant resolved by header/subdomain
@@ -154,6 +170,7 @@ export async function buildApp() {
       await tenant.register(assetRoutes, { prefix: "/assets" });
       await tenant.register(wasteRoutes, { prefix: "/waste" });
       await tenant.register(documentRoutes, { prefix: "/documents" });
+      await tenant.register(formFieldRoutes, { prefix: "/form-fields" });
       await tenant.register(notificationRoutes, { prefix: "/notifications" });
       await tenant.register(reportRoutes, { prefix: "/reports" });
       await tenant.register(activityRoutes, { prefix: "/activity" });

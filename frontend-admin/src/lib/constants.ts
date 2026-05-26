@@ -20,6 +20,7 @@ import {
   Warehouse,
   Webhook,
   Bell,
+  Sliders,
 } from "lucide-react";
 
 export type NavItem = {
@@ -133,6 +134,7 @@ export const adminNavGroups: NavGroup[] = [
   {
     label: "System",
     items: [
+      { label: "Form Builder", to: "/admin/form-fields", icon: Sliders, permission: "incident:read" },
       { label: "Reports", to: "/admin/reports", icon: Archive, permission: "report:read" },
       { label: "Feedback", to: "/admin/feedback", icon: MessageSquare, permission: "feedback:read" },
       { label: "Notifications", to: "/admin/notifications", icon: Bell },

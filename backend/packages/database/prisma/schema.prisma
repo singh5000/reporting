@@ -62,6 +62,7 @@ model Tenant {
   apiKeys           ApiKey[]
   webhooks          Webhook[]
   feedbacks         Feedback[]
+  formFields        FormFieldDefinition[]
 
   @@index([slug])
   @@index([domain])
@@ -1175,6 +1176,33 @@ model Webhook {
 }
 
 // =============================================================================
+// DYNAMIC FORM FIELDS
+// =============================================================================
+
+model FormFieldDefinition {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  module      String    // "incident" | "audit"
+  name        String    // snake_case key stored in metadata
+  label       String
+  type        FieldType
+  placeholder String?
+  helpText    String?
+  isRequired  Boolean   @default(false)
+  isEnabled   Boolean   @default(true)
+  options     Json?     // [{label: string, value: string}] for SELECT/MULTISELECT
+  validation  Json?     // {min, max, minLength, maxLength, pattern}
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([tenantId, module, name])
+  @@index([tenantId, module])
+  @@map("form_field_definitions")
+}
+
+// =============================================================================
 // ENUMS
 // =============================================================================
 
@@ -1395,6 +1423,19 @@ enum DocumentStatus {
   PUBLISHED
   SUPERSEDED
   ARCHIVED
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  SELECT
+  MULTISELECT
+  CHECKBOX
+  DATE
+  URL
+  EMAIL
+  PHONE
 }
 
 enum NotificationStatus {
