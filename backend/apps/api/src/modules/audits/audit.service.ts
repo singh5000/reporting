@@ -1,6 +1,7 @@
 import { basePrisma } from "@360crd/database";
 import type { SubmitAuditDtoType } from "./audit.dto";
 import { eventBus, Events } from "@360crd/event-bus";
+import { notificationQueue } from "@360crd/queue";
 
 export class AuditService {
   // ── Calculate score from responses ───────────────────────────────────────
@@ -106,11 +107,23 @@ export class AuditService {
 
   // ── Notify assigned user ──────────────────────────────────────────────────
   async notifyAssignment(auditId: string, assignedToId: string, tenantId: string) {
+    const audit = await basePrisma.audit.findUnique({ where: { id: auditId }, select: { refNumber: true, title: true } });
+
     eventBus.publish({
       type: "audit.assigned",
       tenantId,
       userId: assignedToId,
       payload: { auditId, assignedToId },
+    });
+
+    await notificationQueue.add("audit-assigned", {
+      tenantId,
+      userId: assignedToId,
+      type: "audit_assigned",
+      title: "Audit Assigned",
+      message: `You have been assigned audit ${audit?.refNumber ?? ""}: ${audit?.title ?? ""}`,
+      channel: "in-app",
+      data: { auditId, refNumber: audit?.refNumber },
     });
   }
 

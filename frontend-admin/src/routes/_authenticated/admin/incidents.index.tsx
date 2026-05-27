@@ -9,7 +9,8 @@ import { SurfaceCard } from "@/components/shared/Card";
 import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { FilterBar, type FilterConfig } from "@/components/shared/FilterBar";
 import { useIncidentStore } from "@/lib/stores/incident.store";
-import { usePermissions } from "@/lib/auth-store";
+import { usePermissions, useAuth } from "@/lib/auth-store";
+import { useTenantContext } from "@/lib/stores/tenant-context.store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,9 +92,25 @@ const FILTER_CONFIGS: FilterConfig[] = [
   },
 ];
 
-const INCIDENT_TYPES = ["SAFETY", "ENVIRONMENTAL", "QUALITY", "SECURITY", "NEAR_MISS", "PROPERTY_DAMAGE", "OTHER"];
+const INCIDENT_TYPES = [
+  { value: "INCIDENT",      label: "Incident" },
+  { value: "NEAR_MISS",     label: "Near Miss" },
+  { value: "HAZARD",        label: "Hazard" },
+  { value: "OBSERVATION",   label: "Observation" },
+  { value: "ENVIRONMENTAL", label: "Environmental" },
+];
+const INCIDENT_CATEGORIES = [
+  { value: "SAFETY",          label: "Safety" },
+  { value: "ENVIRONMENTAL",   label: "Environmental" },
+  { value: "QUALITY",         label: "Quality" },
+  { value: "SECURITY",        label: "Security" },
+  { value: "NEAR_MISS",       label: "Near Miss" },
+  { value: "PROPERTY_DAMAGE", label: "Property Damage" },
+  { value: "OTHER",           label: "Other" },
+];
 const SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+const PRIORITY_MAP: Record<string, number> = { LOW: 1, MEDIUM: 3, HIGH: 4, CRITICAL: 5 };
 
 // ── Dynamic field renderer ────────────────────────────────────────────────────
 function DynamicFieldInput({
@@ -215,12 +232,13 @@ function DynamicFieldInput({
   }
 }
 
-function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+function CreateIncidentForm({ onSuccess, onCancel, selectedTenantId, isSuperAdmin }: { onSuccess: () => void; onCancel: () => void; selectedTenantId?: string | null; isSuperAdmin?: boolean }) {
   const { createIncident } = useIncidentStore();
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState("SAFETY");
+  const [type, setType] = useState("INCIDENT");
+  const [category, setCategory] = useState("SAFETY");
   const [severity, setSeverity] = useState("MEDIUM");
   const [priority, setPriority] = useState("MEDIUM");
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 16));
@@ -245,12 +263,14 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
     try {
       await createIncident({
         title: title.trim(),
-        description: description.trim() || undefined,
+        description: description.trim() || "No description provided.",
         type,
+        category,
         severity,
-        priority,
+        priority: PRIORITY_MAP[priority],
         occurredAt: new Date(occurredAt).toISOString(),
         location: location.trim() || undefined,
+        ...(isSuperAdmin && selectedTenantId ? { tenantId: selectedTenantId } : {}),
         ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
       onSuccess();
@@ -261,6 +281,11 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
 
   return (
     <form id="create-incident-form" onSubmit={handleSubmit} className="space-y-5">
+      {isSuperAdmin && !selectedTenantId && (
+        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2.5 text-xs text-yellow-700 dark:text-yellow-400">
+          Select a company from the header before reporting an incident.
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Title <span className="text-red-500">*</span>
@@ -294,7 +319,7 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               {INCIDENT_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -302,16 +327,30 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
 
         <div className="space-y-1.5">
           <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Date &amp; Time <span className="text-red-500">*</span>
+            Category <span className="text-red-500">*</span>
           </Label>
-          <Input
-            type="datetime-local"
-            value={occurredAt}
-            onChange={(e) => setOccurredAt(e.target.value)}
-            className="h-9"
-            required
-          />
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {INCIDENT_CATEGORIES.map((c) => (
+                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Date &amp; Time <span className="text-red-500">*</span>
+        </Label>
+        <Input
+          type="datetime-local"
+          value={occurredAt}
+          onChange={(e) => setOccurredAt(e.target.value)}
+          className="h-9"
+          required
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -417,6 +456,9 @@ function IncidentsPage() {
   const navigate = useNavigate();
   const { incidents, loading, initialized, fetchIncidents } = useIncidentStore();
   const can = usePermissions();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+  const { selectedTenantId } = useTenantContext();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
@@ -602,6 +644,7 @@ function IncidentsPage() {
               type="submit"
               form="create-incident-form"
               size="sm"
+              disabled={isSuperAdmin && !selectedTenantId}
               className="gap-2 [background:var(--gradient-primary)] text-primary-foreground hover:brightness-110"
             >
               <Send className="h-3.5 w-3.5" />
@@ -613,6 +656,8 @@ function IncidentsPage() {
         <CreateIncidentForm
           onSuccess={() => { setDrawerOpen(false); fetchIncidents(); }}
           onCancel={() => setDrawerOpen(false)}
+          selectedTenantId={selectedTenantId}
+          isSuperAdmin={isSuperAdmin}
         />
       </ModuleDrawer>
     </AppShell>

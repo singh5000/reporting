@@ -133,6 +133,21 @@ export default async function reportRoutes(fastify: FastifyInstance) {
     return reply.send({ success: true, data: report });
   });
 
+  // ── Download report data (re-generates inline as JSON) ────────────────────
+  fastify.get("/:id/download", { preHandler: [authorize("report:read")] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const r = req as any;
+    const report = await prisma.report.findFirst({ where: { id, tenantId: r.tenantId } });
+    if (!report) throw new NotFoundError("Report", id);
+
+    const { generateReportData } = await import("../../workers/report.worker");
+    const data = await generateReportData(report.type as string, r.tenantId, (report.parameters as any) ?? {});
+
+    reply.header("Content-Type", "application/json");
+    reply.header("Content-Disposition", `attachment; filename="${report.title.replace(/[^a-z0-9]/gi, "_")}.json"`);
+    return reply.send(JSON.stringify({ report: { id: report.id, title: report.title, type: report.type, generatedAt: report.generatedAt }, data }, null, 2));
+  });
+
   // ── Delete report ──────────────────────────────────────────────────────────
   fastify.delete("/:id", { preHandler: [authorize("report:delete")] }, async (req, reply) => {
     const { id } = req.params as { id: string };

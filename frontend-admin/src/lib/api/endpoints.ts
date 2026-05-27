@@ -204,6 +204,7 @@ export const ENDPOINTS = {
     detail:    (id: string) => `/reports/${id}`,
     create:    "/reports",
     remove:    (id: string) => `/reports/${id}`,
+    download:  (id: string) => `/reports/${id}/download`,
     dashboard: "/reports/dashboard",
     trend:     "/reports/compliance-trend",
   },

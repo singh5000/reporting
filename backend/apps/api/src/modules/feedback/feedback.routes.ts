@@ -78,7 +78,7 @@ export default async function feedbackRoutes(fastify: FastifyInstance) {
     const { page, limit, type, status, search } = q.data;
 
     const where: any = {
-      tenantId: r.tenantId,
+      ...(r.isSuperAdmin ? {} : { tenantId: r.tenantId }),
       ...(type && { type }),
       ...(status && { status }),
       ...(search && {
@@ -170,11 +170,12 @@ export default async function feedbackRoutes(fastify: FastifyInstance) {
   // ── Stats ──────────────────────────────────────────────────────────────────
   fastify.get("/stats", { preHandler: [authorize("feedback:read")] }, async (req, reply) => {
     const r = req as any;
+    const statsWhere = r.isSuperAdmin ? {} : { tenantId: r.tenantId };
     const [total, byType, byStatus, avgRating] = await Promise.all([
-      prisma.feedback.count({ where: { tenantId: r.tenantId } }),
-      prisma.feedback.groupBy({ by: ["type"], where: { tenantId: r.tenantId }, _count: true }),
-      prisma.feedback.groupBy({ by: ["status"], where: { tenantId: r.tenantId }, _count: true }),
-      prisma.feedback.aggregate({ where: { tenantId: r.tenantId, rating: { not: null } }, _avg: { rating: true } }),
+      prisma.feedback.count({ where: statsWhere }),
+      prisma.feedback.groupBy({ by: ["type"], where: statsWhere, _count: true }),
+      prisma.feedback.groupBy({ by: ["status"], where: statsWhere, _count: true }),
+      prisma.feedback.aggregate({ where: { ...statsWhere, rating: { not: null } }, _avg: { rating: true } }),
     ]);
     return reply.send({
       success: true,

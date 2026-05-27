@@ -217,6 +217,18 @@ async function generateComplianceStatus(
   };
 }
 
+export async function generateReportData(type: string, tenantId: string, parameters: Record<string, unknown>) {
+  switch (type) {
+    case "INCIDENT_SUMMARY":    return generateIncidentSummary(tenantId, parameters);
+    case "AUDIT_SUMMARY":       return generateAuditSummary(tenantId, parameters);
+    case "TRAINING_COMPLETION": return generateTrainingCompletion(tenantId, parameters);
+    case "PPE_INVENTORY":       return generatePpeInventory(tenantId, parameters);
+    case "WASTE_SUMMARY":       return generateWasteSummary(tenantId, parameters);
+    case "COMPLIANCE_STATUS":   return generateComplianceStatus(tenantId, parameters);
+    default: return { message: `No generator for type: ${type}` };
+  }
+}
+
 export function createReportWorker(): Worker {
   return new Worker<ReportJob>("report", processReport, {
     connection: redisConnection,

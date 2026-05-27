@@ -91,7 +91,13 @@ export async function buildApp() {
   });
 
   await app.register(cors, {
-    origin: config.cors.origins,
+    origin: (origin, cb) => {
+      if (config.isDevelopment || !origin || config.cors.origins.includes(origin)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Not allowed by CORS"), false);
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
