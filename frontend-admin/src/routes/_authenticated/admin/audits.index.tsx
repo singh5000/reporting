@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { useAuditStore } from "@/lib/stores/audit.store";
 import { auditService, type CreateAuditPayload } from "@/lib/api/services/audit.service";
 import { usePermissions, useAuth } from "@/lib/auth-store";
+import { useTenantGuard } from "@/lib/hooks/useTenantGuard";
 import { useTenantContext } from "@/lib/stores/tenant-context.store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,6 +95,7 @@ function AuditsPage() {
   const [form, setForm] = useState<CreateAuditPayload>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [customFields, setCustomFields] = useState<FormField[]>([]);
+  const { requireTenant } = useTenantGuard();
   const [metadata, setMetadata] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
@@ -128,6 +130,7 @@ function AuditsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!requireTenant()) return;
     setSubmitting(true);
     try {
       await createAudit({

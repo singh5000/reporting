@@ -24,6 +24,7 @@ import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePermissions, useAuth } from "@/lib/auth-store";
+import { useTenantGuard } from "@/lib/hooks/useTenantGuard";
 
 export const Route = createFileRoute("/_authenticated/admin/documents")({
   head: () => ({ meta: [{ title: "Documents · 360CRD" }] }),
@@ -80,6 +81,7 @@ function DocumentsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { requireTenant } = useTenantGuard();
 
   async function load() {
     setLoading(true);
@@ -118,6 +120,7 @@ function DocumentsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!requireTenant()) return;
     if (!file) { toast.error("Please select a file to upload"); return; }
     setSubmitting(true);
     try {

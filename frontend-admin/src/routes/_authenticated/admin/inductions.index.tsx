@@ -17,6 +17,7 @@ import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePermissions, useAuth } from "@/lib/auth-store";
+import { useTenantGuard } from "@/lib/hooks/useTenantGuard";
 
 export const Route = createFileRoute("/_authenticated/admin/inductions/")({
   head: () => ({ meta: [{ title: "Inductions · 360CRD" }] }),
@@ -55,6 +56,7 @@ function InductionsPage() {
   const isSuperAdmin = user?.role === "super_admin";
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const { requireTenant } = useTenantGuard();
 
   async function load() {
     setLoading(true);
@@ -87,6 +89,7 @@ function InductionsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!requireTenant()) return;
     setSubmitting(true);
     try {
       await apiClient.post(ENDPOINTS.inductions.create, {

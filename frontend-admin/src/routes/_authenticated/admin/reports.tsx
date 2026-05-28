@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SurfaceCard } from "@/components/shared/Card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTenantGuard } from "@/lib/hooks/useTenantGuard";
 
 export const Route = createFileRoute("/_authenticated/admin/reports")({
   head: () => ({ meta: [{ title: "Reports · 360CRD" }] }),
@@ -38,6 +39,7 @@ function ReportsPage() {
   const [generating, setGenerating] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { requireTenant } = useTenantGuard();
 
   async function load() {
     setLoading(true);
@@ -84,6 +86,7 @@ function ReportsPage() {
   }, [reports]);
 
   async function generate(type: string, label: string) {
+    if (!requireTenant()) return;
     setGenerating(type);
     try {
       await apiClient.post<any>(ENDPOINTS.reports.create, {

@@ -19,6 +19,7 @@ import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/auth-store";
+import { useTenantGuard } from "@/lib/hooks/useTenantGuard";
 
 export const Route = createFileRoute("/_authenticated/admin/waste")({
   head: () => ({ meta: [{ title: "Waste · 360CRD" }] }),
@@ -69,6 +70,7 @@ function WastePage() {
   const can = usePermissions();
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const { requireTenant } = useTenantGuard();
 
   async function load() {
     setLoading(true);
@@ -103,6 +105,7 @@ function WastePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!requireTenant()) return;
     if (!form.type.trim()) { toast.error("Waste type is required"); return; }
     if (!form.quantity || Number(form.quantity) <= 0) { toast.error("Valid quantity is required"); return; }
     setSubmitting(true);

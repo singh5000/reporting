@@ -19,6 +19,7 @@ import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/auth-store";
+import { useTenantGuard } from "@/lib/hooks/useTenantGuard";
 
 export const Route = createFileRoute("/_authenticated/admin/ppe/")({
   head: () => ({ meta: [{ title: "PPE · 360CRD" }] }),
@@ -81,6 +82,7 @@ function PPEPage() {
   const can = usePermissions();
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const { requireTenant } = useTenantGuard();
 
   async function loadList() {
     setLoading(true);
@@ -127,6 +129,7 @@ function PPEPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!requireTenant()) return;
     setSubmitting(true);
     try {
       await apiClient.post(ENDPOINTS.ppe.create, {
