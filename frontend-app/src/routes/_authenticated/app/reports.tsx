@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SurfaceCard } from "@/components/shared/Card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { usePermissions } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports · 360CRD" }] }),
@@ -38,6 +39,8 @@ function ReportsPage() {
   const [generating, setGenerating] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const can = usePermissions();
+  const canGenerate = can("report:export");
 
   async function load() {
     setLoading(true);
@@ -122,27 +125,29 @@ function ReportsPage() {
           </Button>
         </div>
 
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Generate Report</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {REPORT_TYPES.map((rt) => (
-              <Button
-                key={rt.value}
-                variant="outline"
-                className="h-auto flex-col gap-1.5 py-4"
-                onClick={() => generate(rt.value, rt.label)}
-                disabled={generating !== null}
-              >
-                {generating === rt.value ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                ) : (
-                  <Plus className="h-5 w-5 text-primary" />
-                )}
-                <span className="text-xs font-medium">{rt.label}</span>
-              </Button>
-            ))}
+        {canGenerate && (
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Generate Report</h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {REPORT_TYPES.map((rt) => (
+                <Button
+                  key={rt.value}
+                  variant="outline"
+                  className="h-auto flex-col gap-1.5 py-4"
+                  onClick={() => generate(rt.value, rt.label)}
+                  disabled={generating !== null}
+                >
+                  {generating === rt.value ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  ) : (
+                    <Plus className="h-5 w-5 text-primary" />
+                  )}
+                  <span className="text-xs font-medium">{rt.label}</span>
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">Recent Reports</h2>

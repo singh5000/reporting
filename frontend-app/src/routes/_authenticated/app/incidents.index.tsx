@@ -402,8 +402,8 @@ function IncidentsPage() {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!initialized) fetchIncidents();
-  }, [initialized, fetchIncidents]);
+    fetchIncidents();
+  }, []);
 
   const filtered = useMemo(() => {
     return incidents.filter((inc) => {

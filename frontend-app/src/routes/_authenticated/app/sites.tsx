@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Plus, RefreshCw, Warehouse, MapPin, CheckCircle2, ChevronRight } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { RefreshCw, Warehouse, MapPin, CheckCircle2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useFacilityStore } from "@/lib/stores/facility.store";
 import { Button } from "@/components/ui/button";
@@ -48,8 +48,9 @@ function FacilitiesPage() {
   const [filterVals, setFilterVals] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!initialized) fetchFacilities();
-  }, [initialized, fetchFacilities]);
+    // Always fetch on mount to ensure fresh data for the current user
+    fetchFacilities();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -78,12 +79,6 @@ function FacilitiesPage() {
             <Button variant="outline" size="sm" onClick={() => fetchFacilities()} disabled={loading}>
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             </Button>
-            <Link
-              to="/facilities/create"
-              className="inline-flex h-9 items-center gap-2 rounded-lg [background:var(--gradient-primary)] px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:brightness-110"
-            >
-              <Plus className="h-4 w-4" /> Add Site
-            </Link>
           </div>
         </div>
 
@@ -118,16 +113,8 @@ function FacilitiesPage() {
             <p className="mt-1 text-xs text-muted-foreground">
               {search || Object.values(filterVals).some((v) => v && v !== "ALL")
                 ? "Try adjusting filters"
-                : "Add your first site to get started"}
+                : "No sites assigned to your account"}
             </p>
-            {!search && !Object.values(filterVals).some((v) => v && v !== "ALL") && (
-              <Link
-                to="/facilities/create"
-                className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg [background:var(--gradient-primary)] px-4 text-sm font-medium text-primary-foreground"
-              >
-                <Plus className="h-4 w-4" /> Add Site
-              </Link>
-            )}
           </div>
         ) : (
           <div className="rounded-xl border border-border/60 bg-card/50 overflow-hidden">
@@ -149,7 +136,7 @@ function FacilitiesPage() {
                   <TableRow
                     key={site.id}
                     className="border-border/60 cursor-pointer hover:bg-muted/30"
-                    onClick={() => navigate({ to: "/facilities/$id", params: { id: site.id } })}
+                    onClick={() => navigate({ to: "/app/sites/$id", params: { id: site.id } })}
                   >
                     <TableCell className="font-mono text-xs text-muted-foreground">{site.code}</TableCell>
                     <TableCell className="font-medium">{site.name}</TableCell>

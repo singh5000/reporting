@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import {
   RefreshCw, ShieldCheck, Users, ChevronRight, Crown, Briefcase,
   HardHat, Eye, Plus,
@@ -186,7 +186,12 @@ function RolesPage() {
                       <div className="px-5 py-4 text-xs text-muted-foreground">No roles found</div>
                     ) : (
                       groupRoles.map((role) => (
-                        <div key={role.id} className="flex items-center gap-4 px-5 py-4">
+                        <Link
+                          key={role.id}
+                          to="/admin/roles/$id"
+                          params={{ id: role.id }}
+                          className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40 cursor-pointer"
+                        >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-medium text-foreground">{role.name}</span>
@@ -207,8 +212,9 @@ function RolesPage() {
                               <ShieldCheck className="h-3.5 w-3.5" />
                               <span>{role.permissions?.length ?? 0} permissions</span>
                             </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
                           </div>
-                        </div>
+                        </Link>
                       ))
                     )}
                   </div>

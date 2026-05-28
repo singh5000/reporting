@@ -102,7 +102,7 @@ function AuditsPage() {
   const [metadata, setMetadata] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
-    if (!initialized) fetchAudits();
+    fetchAudits();
     auditService.stats().then(setStats).catch(() => {});
   }, [initialized, fetchAudits]);
 
