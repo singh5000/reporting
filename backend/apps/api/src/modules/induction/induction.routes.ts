@@ -5,6 +5,7 @@ import { prisma, basePrisma } from "@360crd/database";
 import { z } from "zod";
 import { ValidationError, NotFoundError, ForbiddenError } from "../../shared/errors/http.errors";
 import { AuditLogService } from "../audit-logs/audit-log.service";
+import { notificationQueue } from "@360crd/queue";
 
 const auditLog = new AuditLogService();
 
@@ -147,6 +148,16 @@ export default async function inductionRoutes(fastify: FastifyInstance) {
           : undefined,
       },
     });
+    notificationQueue.add("induction-enrolled", {
+      tenantId: r.tenantId,
+      userId: r.userId,
+      type: "induction_enrolled",
+      title: "Induction Enrollment Confirmed",
+      message: `You have been enrolled in "${induction.title}". Complete it at your earliest convenience.`,
+      channel: "in-app",
+      data: { inductionId },
+    }).catch(() => {});
+
     return reply.status(201).send({ success: true, data: enrollment });
   });
 
@@ -168,6 +179,17 @@ export default async function inductionRoutes(fastify: FastifyInstance) {
           : undefined,
       },
     });
+
+    notificationQueue.add("induction-assigned", {
+      tenantId: r.tenantId,
+      userId,
+      type: "induction_enrolled",
+      title: "Induction Assigned",
+      message: `You have been enrolled in "${induction.title}". Please complete it as required.`,
+      channel: "in-app",
+      data: { inductionId },
+    }).catch(() => {});
+
     return reply.status(201).send({ success: true, data: enrollment });
   });
 
@@ -192,6 +214,17 @@ export default async function inductionRoutes(fastify: FastifyInstance) {
           : enrollment.expiresAt,
       },
     });
+
+    notificationQueue.add("induction-completed", {
+      tenantId: r.tenantId ?? enrollment.tenantId,
+      userId: r.userId,
+      type: "induction_completed",
+      title: "Induction Completed",
+      message: `You have successfully completed "${induction?.title ?? "the induction"}".`,
+      channel: "in-app",
+      data: { inductionId },
+    }).catch(() => {});
+
     return reply.send({ success: true, data: updated });
   });
 

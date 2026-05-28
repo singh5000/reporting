@@ -20,7 +20,7 @@ import {
 } from "../../shared/errors/http.errors";
 import { basePrisma } from "@360crd/database";
 
-const SESSION_TTL_SECONDS = 3600; // 1hr TTL in Redis (refreshed on activity)
+const SESSION_TTL_SECONDS = 86400; // 24hr TTL in Redis (refreshed on activity)
 const MFA_TOKEN_TTL_SECONDS = 300; // 5min MFA challenge window
 
 function parseExpiryToSeconds(expiry: string): number {

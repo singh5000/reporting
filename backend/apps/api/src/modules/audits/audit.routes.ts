@@ -4,6 +4,7 @@ import { authorize } from "../../middleware/authorize";
 import { prisma, basePrisma } from "@360crd/database";
 import { AuditService } from "./audit.service";
 import { AuditLogService } from "../audit-logs/audit-log.service";
+import { notificationQueue } from "@360crd/queue";
 import { UserRepository } from "../users/user.repository";
 import {
   CreateAuditDto, ListAuditsDto, SubmitAuditDto,
@@ -479,6 +480,18 @@ export default async function auditRoutes(fastify: FastifyInstance) {
       after: { status: "COMPLETED", score: scoreResult.score, percentage: scoreResult.percentage },
       ipAddress: req.ip,
     });
+
+    if (audit.assignedToId && audit.assignedToId !== r.userId) {
+      notificationQueue.add("audit-completed", {
+        tenantId: r.tenantId,
+        userId: audit.assignedToId,
+        type: "audit_completed",
+        title: "Audit Completed",
+        message: `Audit ${audit.refNumber} has been completed with a score of ${scoreResult.percentage?.toFixed(0) ?? "N/A"}%.`,
+        channel: "in-app",
+        data: { auditId: id, refNumber: audit.refNumber },
+      }).catch(() => {});
+    }
 
     return reply.send({ success: true, data: updated });
   });

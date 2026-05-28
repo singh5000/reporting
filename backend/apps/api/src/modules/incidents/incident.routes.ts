@@ -8,6 +8,7 @@ import {
   CreateCAPADto, UpdateCAPADto,
 } from "./incident.dto";
 import { ValidationError, NotFoundError, ForbiddenError } from "../../shared/errors/http.errors";
+import { notificationQueue } from "@360crd/queue";
 
 const svc = new IncidentService();
 const userRepo = new UserRepository();
@@ -142,6 +143,19 @@ export default async function incidentRoutes(fastify: FastifyInstance) {
       { status: "CLOSED", rootCause, closedAt: new Date().toISOString() } as any,
       { ipAddress: req.ip }
     );
+
+    if (incident.reportedById) {
+      notificationQueue.add("incident-closed", {
+        tenantId: r.tenantId,
+        userId: incident.reportedById,
+        type: "incident_closed",
+        title: "Incident Closed",
+        message: `Incident ${incident.refNumber} has been closed.`,
+        channel: "in-app",
+        data: { incidentId: id, refNumber: incident.refNumber },
+      }).catch(() => {});
+    }
+
     return reply.send({ success: true, data: incident });
   });
 

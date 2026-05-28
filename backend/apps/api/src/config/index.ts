@@ -41,7 +41,7 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default("http://localhost:5173"),
 
   // Storage
-  STORAGE_PROVIDER: z.enum(["s3", "local"]).default("s3"),
+  STORAGE_PROVIDER: z.enum(["s3", "local"]).default("local"),
   AWS_REGION: z.string().default("us-east-1"),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),

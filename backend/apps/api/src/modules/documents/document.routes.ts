@@ -7,6 +7,7 @@ import { createHash } from "crypto";
 import { uploadFile, getPresignedDownloadUrl, deleteFile, buildStorageKey } from "../../shared/storage/storage.service";
 import { ValidationError, NotFoundError } from "../../shared/errors/http.errors";
 import { AuditLogService } from "../audit-logs/audit-log.service";
+import { notificationQueue } from "@360crd/queue";
 
 const auditLog = new AuditLogService();
 
@@ -191,6 +192,19 @@ export default async function documentRoutes(fastify: FastifyInstance) {
     const existing = await prisma.document.findFirst({ where: { id, tenantId: r.tenantId, deletedAt: null } });
     if (!existing) throw new NotFoundError("Document", id);
     const doc = await prisma.document.update({ where: { id }, data: { status: "PUBLISHED" } });
+
+    if (existing.uploadedById) {
+      notificationQueue.add("document-published", {
+        tenantId: r.tenantId,
+        userId: existing.uploadedById,
+        type: "document_published",
+        title: "Document Published",
+        message: `"${existing.title}" has been published and is now available.`,
+        channel: "in-app",
+        data: { documentId: id },
+      }).catch(() => {});
+    }
+
     return reply.send({ success: true, data: doc });
   });
 

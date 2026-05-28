@@ -77,8 +77,8 @@ export async function authenticate(
     skipTenantFilter: isSuperAdmin && !tenantOverrideActive,
   });
 
-  // Refresh session TTL on activity
-  await sessionCache.expire(sessionKey, 3600);
+  // Refresh session TTL on activity (24 hours)
+  await sessionCache.expire(sessionKey, 86400);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ async function getPermissions(
   }
 
   const permArray = Array.from(permissions);
-  await permissionCache.set(cacheKey, permArray, 300); // 5min cache
+  await permissionCache.set(cacheKey, permArray, 3600); // 1hr cache
   return permArray;
 }
 

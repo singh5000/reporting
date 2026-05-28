@@ -5,6 +5,7 @@ import { prisma, basePrisma } from "@360crd/database";
 import { z } from "zod";
 import { ValidationError, NotFoundError } from "../../shared/errors/http.errors";
 import { AuditLogService } from "../audit-logs/audit-log.service";
+import { notificationQueue } from "@360crd/queue";
 
 const auditLog = new AuditLogService();
 
@@ -143,6 +144,17 @@ export default async function assetRoutes(fastify: FastifyInstance) {
     });
 
     await auditLog.log({ tenantId: r.tenantId, userId: r.userId, action: "CREATE", resource: "asset", resourceId: asset.id, after: { name: asset.name, category: asset.category } });
+
+    notificationQueue.add("asset-created", {
+      tenantId: r.tenantId,
+      userId: r.userId,
+      type: "asset_created",
+      title: "Asset Added",
+      message: `New asset "${asset.name}" (${asset.category}) has been added to inventory.`,
+      channel: "in-app",
+      data: { assetId: asset.id },
+    }).catch(() => {});
+
     return reply.status(201).send({ success: true, data: asset });
   });
 
@@ -224,6 +236,16 @@ export default async function assetRoutes(fastify: FastifyInstance) {
       data: { tenantId: r.tenantId, assetId, userId, notes },
       include: { user: { select: { id: true, firstName: true, lastName: true } } },
     });
+
+    notificationQueue.add("asset-assigned", {
+      tenantId: r.tenantId,
+      userId,
+      type: "asset_assigned",
+      title: "Asset Assigned to You",
+      message: `${asset.name} (${asset.category}) has been assigned to you.`,
+      channel: "in-app",
+      data: { assetId },
+    }).catch(() => {});
 
     return reply.status(201).send({ success: true, data: assignment });
   });

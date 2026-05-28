@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import { AppShell } from "@/components/layout/AppShell";
@@ -11,19 +11,14 @@ import { DangerZone } from "@/components/settings/DangerZone";
 
 const searchSchema = z.object({ tab: z.string().optional() });
 
-export const Route = createFileRoute("/_authenticated/admin/settings")({
+export const Route = createFileRoute("/_authenticated/portal/settings")({
   validateSearch: searchSchema,
-  head: () => ({
-    meta: [
-      { title: "Settings · 360CRD" },
-      { name: "description", content: "Workspace, security and notification preferences." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Settings · 360CRD" }] }),
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const { tab: tabParam } = useSearch({ from: "/_authenticated/admin/settings" });
+  const { tab: tabParam } = useSearch({ from: "/_authenticated/portal/settings" });
   const [tab, setTab] = useState<SettingsTabId>((tabParam as SettingsTabId) ?? "profile");
 
   return (
@@ -35,21 +30,19 @@ function SettingsPage() {
             Manage your profile, preferences, security and notifications.
           </p>
         </div>
-
         <div className="grid gap-6 md:grid-cols-[220px_1fr]">
           <aside className="md:sticky md:top-6 md:self-start">
             <SettingsTabs active={tab} onChange={setTab} />
           </aside>
           <section className="min-w-0">
-            {tab === "profile" && <ProfileSettings />}
-            {tab === "preferences" && <PreferencesSettings />}
-            {tab === "security" && <SecuritySettings />}
+            {tab === "profile"       && <ProfileSettings />}
+            {tab === "preferences"   && <PreferencesSettings />}
+            {tab === "security"      && <SecuritySettings />}
             {tab === "notifications" && <NotificationsSettings />}
-            {tab === "danger" && <DangerZone />}
+            {tab === "danger"        && <DangerZone />}
           </section>
         </div>
       </div>
     </AppShell>
   );
 }
-

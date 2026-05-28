@@ -46,21 +46,19 @@ function mapApiNotification(n: any): Notification {
 
 let state: Notification[] = [];
 let unreadCount = 0;
-let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let initialized = false;
 
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 const subscribe = (l: () => void) => {
   listeners.add(l);
-  if (!initialized) startPolling();
+  if (!initialized) {
+    initialized = true;
+    fetchNotifications();
+  }
   return () => {
     listeners.delete(l);
-    if (listeners.size === 0 && pollTimer) {
-      clearTimeout(pollTimer);
-      pollTimer = null;
-      initialized = false;
-    }
+    if (listeners.size === 0) initialized = false;
   };
 };
 
@@ -74,19 +72,6 @@ async function fetchNotifications() {
   } catch {
     // silently ignore — network might not be available
   }
-}
-
-function startPolling() {
-  if (initialized) return;
-  initialized = true;
-  fetchNotifications();
-  const schedule = () => {
-    pollTimer = setTimeout(async () => {
-      await fetchNotifications();
-      if (listeners.size > 0) schedule();
-    }, 30_000);
-  };
-  schedule();
 }
 
 export const notificationStore = {
@@ -106,6 +91,7 @@ export const notificationStore = {
     try { await http.patch(ENDPOINTS.notifications.markAllRead); } catch { /* ignore */ }
   },
   clearAll: () => { state = []; unreadCount = 0; emit(); },
+  refresh: () => fetchNotifications(),
   addLocal: (n: Notification) => {
     state = [n, ...state];
     if (!n.read) unreadCount += 1;

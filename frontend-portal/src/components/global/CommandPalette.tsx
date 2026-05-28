@@ -1,39 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  Building2,
-  ClipboardCheck,
-  CornerDownLeft,
-  FileText,
-  Plus,
-  Search,
-  ShieldAlert,
-  Sparkles,
-  Users,
+  Building2, ClipboardCheck, CornerDownLeft, FileText,
+  Plus, Search, ShieldAlert, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { groupByCategory, indexedData, searchIndex, type SearchCategory } from "@/lib/search-store";
+import { http } from "@/lib/api/axios";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+import { type SearchCategory, type SearchItem } from "@/lib/search-store";
 
-type Action = {
-  id: string;
-  label: string;
-  hint: string;
-  icon: typeof Plus;
-  to: string;
-};
+type Action = { id: string; label: string; hint: string; icon: typeof Plus; to: string };
 
 const QUICK_ACTIONS: Action[] = [
-  { id: "qa-audit", label: "Create Audit", hint: "Start a new audit", icon: ClipboardCheck, to: "/audits/create" },
-  { id: "qa-incident", label: "Report Incident", hint: "Log a new incident", icon: ShieldAlert, to: "/incidents/create" },
-  { id: "qa-facility", label: "Add Facility", hint: "Onboard a new facility", icon: Building2, to: "/facilities/create" },
-  { id: "qa-company", label: "Add Company", hint: "Create a new tenant", icon: Users, to: "/companies/create" },
+  { id: "qa-incident", label: "Report Incident", hint: "Log a new incident", icon: ShieldAlert, to: "/portal/incidents/create" },
 ];
 
 const CATEGORY_ICON: Record<SearchCategory, typeof FileText> = {
-  Audits: ClipboardCheck,
-  Incidents: ShieldAlert,
+  Incidents:  ShieldAlert,
+  Audits:     ClipboardCheck,
   Facilities: Building2,
-  Companies: Users,
 };
 
 function highlight(text: string, q: string) {
@@ -49,50 +34,74 @@ function highlight(text: string, q: string) {
   );
 }
 
-type Row = { kind: "action"; action: Action } | { kind: "result"; item: (typeof indexedData)[number] };
+async function runSearch(q: string): Promise<SearchItem[]> {
+  const [incidents, audits, sites] = await Promise.allSettled([
+    http.get<any>(ENDPOINTS.incidents.list, { params: { search: q, limit: 5 } }),
+    http.get<any>(ENDPOINTS.audits.list,    { params: { search: q, limit: 5 } }),
+    http.get<any>(ENDPOINTS.sites.list,     { params: { search: q, limit: 5 } }),
+  ]);
+  const out: SearchItem[] = [];
+  if (incidents.status === "fulfilled")
+    for (const inc of (incidents.value.data?.data ?? []))
+      out.push({ id: inc.id, category: "Incidents", title: `${inc.refNumber} · ${inc.title}`, subtitle: [inc.location ?? inc.site?.name, inc.status].filter(Boolean).join(" · "), to: "/portal/incidents" });
+  if (audits.status === "fulfilled")
+    for (const aud of (audits.value.data?.data ?? []))
+      out.push({ id: aud.id, category: "Audits", title: `${aud.refNumber} · ${aud.title}`, subtitle: [aud.site?.name, aud.status].filter(Boolean).join(" · "), to: "/portal/audits" });
+  if (sites.status === "fulfilled")
+    for (const site of (sites.value.data?.data ?? []))
+      out.push({ id: site.id, category: "Facilities", title: site.name, subtitle: [site.type, site.status].filter(Boolean).join(" · "), to: "/portal/sites" });
+  return out;
+}
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
+  const [query, setQuery]     = useState("");
+  const [results, setResults] = useState<SearchItem[]>([]);
+  const [active, setActive]   = useState(0);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setActive(0);
-      setTimeout(() => inputRef.current?.focus(), 10);
-    }
+    if (open) { setQuery(""); setResults([]); setActive(0); setTimeout(() => inputRef.current?.focus(), 10); }
   }, [open]);
 
-  const rows: Row[] = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const actions = QUICK_ACTIONS.filter((a) => !q || a.label.toLowerCase().includes(q));
-    const results = q ? searchIndex(query) : [];
-    return [
-      ...actions.map<Row>((a) => ({ kind: "action", action: a })),
-      ...results.map<Row>((item) => ({ kind: "result", item })),
-    ];
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const q = query.trim();
+    if (q.length < 2) { setResults([]); return; }
+    timerRef.current = setTimeout(async () => {
+      try { setResults(await runSearch(q)); } catch { setResults([]); }
+    }, 300);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [query]);
+
+  const q          = query.trim().toLowerCase();
+  const actionRows = QUICK_ACTIONS.filter((a) => !q || a.label.toLowerCase().includes(q));
+  const totalRows  = actionRows.length + results.length;
 
   useEffect(() => { setActive(0); }, [query]);
 
   if (!open) return null;
 
-  const exec = (row: Row) => {
-    onClose();
-    navigate({ to: row.kind === "action" ? row.action.to : row.item.to });
-  };
+  const execAction = (a: Action) => { onClose(); navigate({ to: a.to as any }); };
+  const execResult = (item: SearchItem) => { onClose(); navigate({ to: item.to as any }); };
 
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setActive((i) => Math.min(i + 1, rows.length - 1)); }
+    if (e.key === "ArrowDown") { e.preventDefault(); setActive((i) => Math.min(i + 1, totalRows - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter" && rows[active]) { e.preventDefault(); exec(rows[active]); }
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      if (active < actionRows.length) execAction(actionRows[active]);
+      else execResult(results[active - actionRows.length]);
+    }
     else if (e.key === "Escape") { e.preventDefault(); onClose(); }
   };
 
-  const grouped = groupByCategory(rows.filter((r) => r.kind === "result").map((r) => (r as Extract<Row, { kind: "result" }>).item));
-  const actionRows = rows.filter((r) => r.kind === "action") as Extract<Row, { kind: "action" }>[];
+  const grouped: Partial<Record<SearchCategory, SearchItem[]>> = {};
+  for (const item of results) {
+    if (!grouped[item.category]) grouped[item.category] = [];
+    grouped[item.category]!.push(item);
+  }
 
   return (
     <div
@@ -110,7 +119,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search or run a command…"
+            placeholder="Search incidents, audits, facilities…"
             className="h-12 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
           />
           <kbd className="hidden h-5 items-center rounded border border-border/60 bg-muted px-1.5 text-[10px] font-medium text-muted-foreground sm:flex">ESC</kbd>
@@ -120,29 +129,19 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           {actionRows.length > 0 && (
             <div className="mb-2">
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</p>
-              {actionRows.map((r, idx) => {
-                const Icon = r.action.icon;
-                const isActive = rows.indexOf(r) === active;
+              {actionRows.map((a, idx) => {
+                const Icon = a.icon;
+                const isActive = idx === active;
                 return (
-                  <button
-                    key={r.action.id}
-                    type="button"
-                    onMouseEnter={() => setActive(rows.indexOf(r))}
-                    onClick={() => exec(r)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                      isActive ? "bg-accent text-foreground" : "text-foreground/90 hover:bg-accent/60",
-                    )}
+                  <button key={a.id} type="button" onMouseEnter={() => setActive(idx)} onClick={() => execAction(a)}
+                    className={cn("flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors", isActive ? "bg-accent text-foreground" : "text-foreground/90 hover:bg-accent/60")}
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
-                      <Icon className="h-4 w-4" />
-                    </div>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"><Icon className="h-4 w-4" /></div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{highlight(r.action.label, query)}</p>
-                      <p className="truncate text-xs text-muted-foreground">{r.action.hint}</p>
+                      <p className="truncate text-sm font-medium">{highlight(a.label, query)}</p>
+                      <p className="truncate text-xs text-muted-foreground">{a.hint}</p>
                     </div>
                     {isActive && <CornerDownLeft className="h-3.5 w-3.5 text-muted-foreground" />}
-                    {idx === 0 && !query && <span className="text-[10px] text-muted-foreground">Quick action</span>}
                   </button>
                 );
               })}
@@ -150,30 +149,19 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           )}
 
           {(Object.keys(grouped) as SearchCategory[]).map((cat) => {
-            const items = grouped[cat];
-            if (!items.length) return null;
-            const Icon = CATEGORY_ICON[cat];
+            const items = grouped[cat]!;
+            const Icon  = CATEGORY_ICON[cat];
             return (
               <div key={cat} className="mb-2">
                 <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cat}</p>
                 {items.map((item) => {
-                  const row: Row = { kind: "result", item };
-                  const idx = rows.findIndex((r) => r.kind === "result" && r.item.id === item.id);
+                  const idx = actionRows.length + results.indexOf(item);
                   const isActive = idx === active;
                   return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onMouseEnter={() => setActive(idx)}
-                      onClick={() => exec(row)}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                        isActive ? "bg-accent text-foreground" : "text-foreground/90 hover:bg-accent/60",
-                      )}
+                    <button key={item.id} type="button" onMouseEnter={() => setActive(idx)} onClick={() => execResult(item)}
+                      className={cn("flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors", isActive ? "bg-accent text-foreground" : "text-foreground/90 hover:bg-accent/60")}
                     >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-inset ring-border">
-                        <Icon className="h-4 w-4" />
-                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-inset ring-border"><Icon className="h-4 w-4" /></div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{highlight(item.title, query)}</p>
                         <p className="truncate text-xs text-muted-foreground">{item.subtitle}</p>
@@ -186,7 +174,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             );
           })}
 
-          {rows.length === 0 && (
+          {totalRows === 0 && (
             <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
               <Sparkles className="h-6 w-6 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium text-foreground">No results</p>

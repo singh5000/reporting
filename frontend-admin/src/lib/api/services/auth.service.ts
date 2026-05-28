@@ -32,7 +32,7 @@ export interface MeResponse {
 
 export const authService = {
   login: (email: string, password: string) =>
-    apiClient.post<{ success: true; data: LoginResponse }>(ENDPOINTS.auth.login, { email, password }),
+    apiClient.post<{ success: true; data: LoginResponse }>(ENDPOINTS.auth.login, { email, password, rememberMe: true }),
 
   logout: (refreshToken?: string, allDevices?: boolean) =>
     apiClient.post<{ success: true }>(ENDPOINTS.auth.logout, { refreshToken, allDevices }),

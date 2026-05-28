@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bell, Check, ChevronDown, LogOut, Settings as SettingsIcon, ShieldCheck, User } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Settings as SettingsIcon, User } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +16,8 @@ import { CommandPalette } from "@/components/global/CommandPalette";
 import { NotificationPanel } from "@/components/global/NotificationPanel";
 import { useNotifications } from "@/lib/notification-store";
 import { RoleBadge } from "@/components/rbac/RoleBadge";
-import { roleStore, useRole } from "@/lib/role-store";
-import { ROLES } from "@/lib/rbac";
+import { useRole } from "@/lib/role-store";
+import { authStore } from "@/lib/auth-store";
 
 export function Header() {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -24,6 +25,7 @@ export function Header() {
   const notifications = useNotifications();
   const unread = notifications.filter((n) => !n.read).length;
   const role = useRole();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -84,25 +86,14 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate({ to: "/app/settings", search: { tab: "profile" } })}>
                 <User className="mr-2 h-4 w-4" /> Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate({ to: "/app/settings", search: { tab: "preferences" } })}>
                 <SettingsIcon className="mr-2 h-4 w-4" /> Preferences
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                Switch role (demo)
-              </DropdownMenuLabel>
-              {ROLES.map((r) => (
-                <DropdownMenuItem key={r.value} onClick={() => roleStore.switchRole(r.value)}>
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  <span className="flex-1">{r.label}</span>
-                  {role === r.value && <Check className="h-3.5 w-3.5 text-primary" />}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive">
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => authStore.logout()}>
                 <LogOut className="mr-2 h-4 w-4" /> Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>

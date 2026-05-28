@@ -202,6 +202,19 @@ export default async function wasteRoutes(fastify: FastifyInstance) {
     if (!existing) throw new NotFoundError("Waste Record", id);
 
     const record = await prisma.wasteRecord.update({ where: { id }, data: { status: status as any } });
+
+    if (existing.createdById) {
+      notificationQueue.add("waste-status-changed", {
+        tenantId: r.tenantId,
+        userId: existing.createdById,
+        type: "waste_status_changed",
+        title: "Waste Record Updated",
+        message: `Waste record (${existing.category}) status changed to ${status}.`,
+        channel: "in-app",
+        data: { wasteRecordId: id, status },
+      }).catch(() => {});
+    }
+
     return reply.send({ success: true, data: record });
   });
 
