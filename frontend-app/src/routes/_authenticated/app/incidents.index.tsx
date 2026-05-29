@@ -163,15 +163,15 @@ function CreateIncidentForm({ onSuccess, onCancel }: { onSuccess: () => void; on
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    if (description.trim().length < 10) {
-      setDescError("Description must be at least 10 characters.");
+    if (description.trim().length < 3) {
+      setDescError("Description must be at least 3 characters.");
       return;
     }
     setDescError("");
     setSubmitting(true);
     try {
       await createIncident({
-        title: title.trim(),
+        title: title.trim() || description.trim().slice(0, 120),
         description: description.trim(),
         type,
         category,

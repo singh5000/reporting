@@ -261,9 +261,10 @@ function CreateIncidentForm({ onSuccess, onCancel, selectedTenantId, isSuperAdmi
     if (!title.trim()) return;
     setSubmitting(true);
     try {
+      const desc = description.trim() || "No description provided.";
       await createIncident({
-        title: title.trim(),
-        description: description.trim() || "No description provided.",
+        title: title.trim() || desc.slice(0, 120),
+        description: desc,
         type,
         category,
         severity,

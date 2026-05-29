@@ -63,6 +63,11 @@ export default async function incidentRoutes(fastify: FastifyInstance) {
     const body = CreateIncidentDto.safeParse(req.body);
     if (!body.success) throw new ValidationError("Validation failed", body.error.errors);
 
+    // Auto-derive title from description when not supplied by the client
+    if (!body.data.title) {
+      (body.data as any).title = body.data.description.slice(0, 120).trim();
+    }
+
     // Staff creating an incident — tag it with one of their sites if none provided
     if (!r.isSuperAdmin && r.userType === "STAFF" && !body.data.siteId) {
       const userSites = await userRepo.getUserSites(r.userId);
