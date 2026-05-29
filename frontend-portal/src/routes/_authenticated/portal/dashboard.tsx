@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SurfaceCard } from "@/components/shared/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardStore } from "@/lib/stores/dashboard.store";
-import { useAuth } from "@/lib/auth-store";
+import { useAuth, usePermissions } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/_authenticated/portal/dashboard")({
   head: () => ({ meta: [{ title: "My Dashboard · 360CRD" }] }),
@@ -15,18 +15,19 @@ export const Route = createFileRoute("/_authenticated/portal/dashboard")({
 function PortalDashboardPage() {
   const { data, loading, fetchDashboard } = useDashboardStore();
   const { user } = useAuth();
+  const can = usePermissions();
   const firstName = user?.name?.split(" ")[0] ?? "there";
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
   const tiles = [
-    { label: "My Sites", to: "/portal/sites", desc: "View assigned site status", icon: Warehouse, color: "bg-blue-500/10 text-blue-500" },
-    { label: "Incidents", to: "/portal/incidents", desc: "Track incident status", icon: ShieldAlert, color: "bg-red-500/10 text-red-500" },
-    { label: "Audits", to: "/portal/audits", desc: "Compliance audit results", icon: ClipboardCheck, color: "bg-green-500/10 text-green-500" },
-    { label: "Documents", to: "/portal/documents", desc: "Policies and SOPs", icon: FileText, color: "bg-purple-500/10 text-purple-500" },
-    { label: "Notifications", to: "/portal/notifications", desc: "Alerts and reminders", icon: Bell, color: "bg-orange-500/10 text-orange-500" },
-    { label: "Feedback", to: "/portal/feedback", desc: "Submit queries or complaints", icon: MessageSquare, color: "bg-gray-500/10 text-gray-500" },
-  ];
+    { label: "My Sites",      to: "/portal/sites",         desc: "View assigned site status",       icon: Warehouse,    color: "bg-blue-500/10 text-blue-500",   show: can("site:read") },
+    { label: "Incidents",     to: "/portal/incidents",     desc: "Track incident status",            icon: ShieldAlert,  color: "bg-red-500/10 text-red-500",     show: can("incident:read") },
+    { label: "Audits",        to: "/portal/audits",        desc: "Compliance audit results",         icon: ClipboardCheck, color: "bg-green-500/10 text-green-500", show: can("audit:read") },
+    { label: "Documents",     to: "/portal/documents",     desc: "Policies and SOPs",               icon: FileText,     color: "bg-purple-500/10 text-purple-500", show: can("document:read") },
+    { label: "Notifications", to: "/portal/notifications", desc: "Alerts and reminders",            icon: Bell,         color: "bg-orange-500/10 text-orange-500", show: can("notification:read") },
+    { label: "Feedback",      to: "/portal/feedback",      desc: "Submit queries or complaints",    icon: MessageSquare, color: "bg-gray-500/10 text-gray-500",   show: can("feedback:read") || can("feedback:create") },
+  ].filter((t) => t.show);
 
   return (
     <AppShell>
