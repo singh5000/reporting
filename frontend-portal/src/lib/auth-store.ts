@@ -34,11 +34,6 @@ function readPersistedState(): AuthState {
     if (parsed.isAuthenticated && !getAuthToken()) {
       return { isAuthenticated: false, user: null };
     }
-    // Strip permissions from localStorage — always fetch fresh from /auth/me.
-    // This prevents stale permissions (e.g. disabled modules) from showing on refresh.
-    if (parsed.user) {
-      return { ...parsed, user: { ...parsed.user, permissions: [] } };
-    }
     return parsed;
   } catch {
     return { isAuthenticated: false, user: null };

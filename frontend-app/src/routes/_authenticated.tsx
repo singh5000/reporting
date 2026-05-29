@@ -1,11 +1,13 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { authStore, useAuth } from "@/lib/auth-store";
 import { apiClient } from "@/lib/api/api-client";
 
 const APP_ROLES = ["manager", "staff"];
 
 export const Route = createFileRoute("/_authenticated")({
+  // async beforeLoad: refresh permissions BEFORE child route guards run.
+  // This ensures disabled modules block access on navigation.
   beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
 
@@ -19,7 +21,6 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/login" });
     }
 
-    // Refresh permissions before child route guards run (navigation path)
     try {
       const res = await (apiClient as any).get("/auth/me");
       const perms = res.data?.permissions;
@@ -36,30 +37,21 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedLayout() {
   const { user } = useAuth();
-  const [ready, setReady] = useState(false);
 
+  // On page refresh (F5), beforeLoad already ran above. But React may render
+  // children with the localStorage snapshot before the store updates propagate.
+  // This useEffect re-fetches once after mount to trigger a reactive re-render
+  // with the latest permissions — no spinner, instant display, correct within ~100ms.
   useEffect(() => {
-    if (!user) { setReady(true); return; }
-    // Block children from rendering until permissions are confirmed fresh.
-    // This handles the page-refresh case where beforeLoad may have already
-    // run but React hasn't re-rendered with the updated store yet.
+    if (!user) return;
     (apiClient as any)
       .get("/auth/me")
       .then((res: any) => {
         const perms = res.data?.permissions;
         if (Array.isArray(perms)) authStore.updatePermissions(perms);
       })
-      .catch(() => {})
-      .finally(() => setReady(true));
+      .catch(() => {});
   }, []);
-
-  if (!ready) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
 
   return <Outlet />;
 }
