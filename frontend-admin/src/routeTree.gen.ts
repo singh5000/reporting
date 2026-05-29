@@ -43,6 +43,7 @@ import { Route as AuthenticatedAdminPpeIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminInductionsIndexRouteImport } from './routes/_authenticated/admin/inductions.index'
 import { Route as AuthenticatedAdminIncidentsIndexRouteImport } from './routes/_authenticated/admin/incidents.index'
 import { Route as AuthenticatedAdminAuditsIndexRouteImport } from './routes/_authenticated/admin/audits.index'
+import { Route as AuthenticatedAdminAssetsIndexRouteImport } from './routes/_authenticated/admin/assets.index'
 import { Route as AuthenticatedAdminUsersIdRouteImport } from './routes/_authenticated/admin/users.$id'
 import { Route as AuthenticatedAdminTrainingIdRouteImport } from './routes/_authenticated/admin/training.$id'
 import { Route as AuthenticatedAdminSitesIdRouteImport } from './routes/_authenticated/admin/sites.$id'
@@ -52,6 +53,7 @@ import { Route as AuthenticatedAdminInductionsIdRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminIncidentsIdRouteImport } from './routes/_authenticated/admin/incidents.$id'
 import { Route as AuthenticatedAdminCompaniesIdRouteImport } from './routes/_authenticated/admin/companies.$id'
 import { Route as AuthenticatedAdminAuditsIdRouteImport } from './routes/_authenticated/admin/audits.$id'
+import { Route as AuthenticatedAdminAssetsIdRouteImport } from './routes/_authenticated/admin/assets.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -245,6 +247,12 @@ const AuthenticatedAdminAuditsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAdminAuditsRoute,
   } as any)
+const AuthenticatedAdminAssetsIndexRoute =
+  AuthenticatedAdminAssetsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminAssetsRoute,
+  } as any)
 const AuthenticatedAdminUsersIdRoute =
   AuthenticatedAdminUsersIdRouteImport.update({
     id: '/$id',
@@ -298,6 +306,12 @@ const AuthenticatedAdminAuditsIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedAdminAuditsRoute,
   } as any)
+const AuthenticatedAdminAssetsIdRoute =
+  AuthenticatedAdminAssetsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminAssetsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -306,7 +320,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/admin/activity': typeof AuthenticatedAdminActivityRoute
-  '/admin/assets': typeof AuthenticatedAdminAssetsRoute
+  '/admin/assets': typeof AuthenticatedAdminAssetsRouteWithChildren
   '/admin/audits': typeof AuthenticatedAdminAuditsRouteWithChildren
   '/admin/companies': typeof AuthenticatedAdminCompaniesRouteWithChildren
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
@@ -326,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/admin/waste': typeof AuthenticatedAdminWasteRoute
   '/admin/webhooks': typeof AuthenticatedAdminWebhooksRoute
+  '/admin/assets/$id': typeof AuthenticatedAdminAssetsIdRoute
   '/admin/audits/$id': typeof AuthenticatedAdminAuditsIdRoute
   '/admin/companies/$id': typeof AuthenticatedAdminCompaniesIdRoute
   '/admin/incidents/$id': typeof AuthenticatedAdminIncidentsIdRoute
@@ -335,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/admin/sites/$id': typeof AuthenticatedAdminSitesIdRoute
   '/admin/training/$id': typeof AuthenticatedAdminTrainingIdRoute
   '/admin/users/$id': typeof AuthenticatedAdminUsersIdRoute
+  '/admin/assets/': typeof AuthenticatedAdminAssetsIndexRoute
   '/admin/audits/': typeof AuthenticatedAdminAuditsIndexRoute
   '/admin/incidents/': typeof AuthenticatedAdminIncidentsIndexRoute
   '/admin/inductions/': typeof AuthenticatedAdminInductionsIndexRoute
@@ -350,7 +366,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/admin/activity': typeof AuthenticatedAdminActivityRoute
-  '/admin/assets': typeof AuthenticatedAdminAssetsRoute
   '/admin/companies': typeof AuthenticatedAdminCompaniesRouteWithChildren
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/documents': typeof AuthenticatedAdminDocumentsRoute
@@ -363,6 +378,7 @@ export interface FileRoutesByTo {
   '/admin/tenants': typeof AuthenticatedAdminTenantsRoute
   '/admin/waste': typeof AuthenticatedAdminWasteRoute
   '/admin/webhooks': typeof AuthenticatedAdminWebhooksRoute
+  '/admin/assets/$id': typeof AuthenticatedAdminAssetsIdRoute
   '/admin/audits/$id': typeof AuthenticatedAdminAuditsIdRoute
   '/admin/companies/$id': typeof AuthenticatedAdminCompaniesIdRoute
   '/admin/incidents/$id': typeof AuthenticatedAdminIncidentsIdRoute
@@ -372,6 +388,7 @@ export interface FileRoutesByTo {
   '/admin/sites/$id': typeof AuthenticatedAdminSitesIdRoute
   '/admin/training/$id': typeof AuthenticatedAdminTrainingIdRoute
   '/admin/users/$id': typeof AuthenticatedAdminUsersIdRoute
+  '/admin/assets': typeof AuthenticatedAdminAssetsIndexRoute
   '/admin/audits': typeof AuthenticatedAdminAuditsIndexRoute
   '/admin/incidents': typeof AuthenticatedAdminIncidentsIndexRoute
   '/admin/inductions': typeof AuthenticatedAdminInductionsIndexRoute
@@ -389,7 +406,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/admin/activity': typeof AuthenticatedAdminActivityRoute
-  '/_authenticated/admin/assets': typeof AuthenticatedAdminAssetsRoute
+  '/_authenticated/admin/assets': typeof AuthenticatedAdminAssetsRouteWithChildren
   '/_authenticated/admin/audits': typeof AuthenticatedAdminAuditsRouteWithChildren
   '/_authenticated/admin/companies': typeof AuthenticatedAdminCompaniesRouteWithChildren
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
@@ -409,6 +426,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/_authenticated/admin/waste': typeof AuthenticatedAdminWasteRoute
   '/_authenticated/admin/webhooks': typeof AuthenticatedAdminWebhooksRoute
+  '/_authenticated/admin/assets/$id': typeof AuthenticatedAdminAssetsIdRoute
   '/_authenticated/admin/audits/$id': typeof AuthenticatedAdminAuditsIdRoute
   '/_authenticated/admin/companies/$id': typeof AuthenticatedAdminCompaniesIdRoute
   '/_authenticated/admin/incidents/$id': typeof AuthenticatedAdminIncidentsIdRoute
@@ -418,6 +436,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/sites/$id': typeof AuthenticatedAdminSitesIdRoute
   '/_authenticated/admin/training/$id': typeof AuthenticatedAdminTrainingIdRoute
   '/_authenticated/admin/users/$id': typeof AuthenticatedAdminUsersIdRoute
+  '/_authenticated/admin/assets/': typeof AuthenticatedAdminAssetsIndexRoute
   '/_authenticated/admin/audits/': typeof AuthenticatedAdminAuditsIndexRoute
   '/_authenticated/admin/incidents/': typeof AuthenticatedAdminIncidentsIndexRoute
   '/_authenticated/admin/inductions/': typeof AuthenticatedAdminInductionsIndexRoute
@@ -455,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/waste'
     | '/admin/webhooks'
+    | '/admin/assets/$id'
     | '/admin/audits/$id'
     | '/admin/companies/$id'
     | '/admin/incidents/$id'
@@ -464,6 +484,7 @@ export interface FileRouteTypes {
     | '/admin/sites/$id'
     | '/admin/training/$id'
     | '/admin/users/$id'
+    | '/admin/assets/'
     | '/admin/audits/'
     | '/admin/incidents/'
     | '/admin/inductions/'
@@ -479,7 +500,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/admin/activity'
-    | '/admin/assets'
     | '/admin/companies'
     | '/admin/dashboard'
     | '/admin/documents'
@@ -492,6 +512,7 @@ export interface FileRouteTypes {
     | '/admin/tenants'
     | '/admin/waste'
     | '/admin/webhooks'
+    | '/admin/assets/$id'
     | '/admin/audits/$id'
     | '/admin/companies/$id'
     | '/admin/incidents/$id'
@@ -501,6 +522,7 @@ export interface FileRouteTypes {
     | '/admin/sites/$id'
     | '/admin/training/$id'
     | '/admin/users/$id'
+    | '/admin/assets'
     | '/admin/audits'
     | '/admin/incidents'
     | '/admin/inductions'
@@ -537,6 +559,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/waste'
     | '/_authenticated/admin/webhooks'
+    | '/_authenticated/admin/assets/$id'
     | '/_authenticated/admin/audits/$id'
     | '/_authenticated/admin/companies/$id'
     | '/_authenticated/admin/incidents/$id'
@@ -546,6 +569,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/sites/$id'
     | '/_authenticated/admin/training/$id'
     | '/_authenticated/admin/users/$id'
+    | '/_authenticated/admin/assets/'
     | '/_authenticated/admin/audits/'
     | '/_authenticated/admin/incidents/'
     | '/_authenticated/admin/inductions/'
@@ -803,6 +827,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAuditsIndexRouteImport
       parentRoute: typeof AuthenticatedAdminAuditsRoute
     }
+    '/_authenticated/admin/assets/': {
+      id: '/_authenticated/admin/assets/'
+      path: '/'
+      fullPath: '/admin/assets/'
+      preLoaderRoute: typeof AuthenticatedAdminAssetsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminAssetsRoute
+    }
     '/_authenticated/admin/users/$id': {
       id: '/_authenticated/admin/users/$id'
       path: '/$id'
@@ -866,8 +897,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAuditsIdRouteImport
       parentRoute: typeof AuthenticatedAdminAuditsRoute
     }
+    '/_authenticated/admin/assets/$id': {
+      id: '/_authenticated/admin/assets/$id'
+      path: '/$id'
+      fullPath: '/admin/assets/$id'
+      preLoaderRoute: typeof AuthenticatedAdminAssetsIdRouteImport
+      parentRoute: typeof AuthenticatedAdminAssetsRoute
+    }
   }
 }
+
+interface AuthenticatedAdminAssetsRouteChildren {
+  AuthenticatedAdminAssetsIdRoute: typeof AuthenticatedAdminAssetsIdRoute
+  AuthenticatedAdminAssetsIndexRoute: typeof AuthenticatedAdminAssetsIndexRoute
+}
+
+const AuthenticatedAdminAssetsRouteChildren: AuthenticatedAdminAssetsRouteChildren =
+  {
+    AuthenticatedAdminAssetsIdRoute: AuthenticatedAdminAssetsIdRoute,
+    AuthenticatedAdminAssetsIndexRoute: AuthenticatedAdminAssetsIndexRoute,
+  }
+
+const AuthenticatedAdminAssetsRouteWithChildren =
+  AuthenticatedAdminAssetsRoute._addFileChildren(
+    AuthenticatedAdminAssetsRouteChildren,
+  )
 
 interface AuthenticatedAdminAuditsRouteChildren {
   AuthenticatedAdminAuditsIdRoute: typeof AuthenticatedAdminAuditsIdRoute
@@ -1012,7 +1066,7 @@ const AuthenticatedAdminUsersRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminActivityRoute: typeof AuthenticatedAdminActivityRoute
-  AuthenticatedAdminAssetsRoute: typeof AuthenticatedAdminAssetsRoute
+  AuthenticatedAdminAssetsRoute: typeof AuthenticatedAdminAssetsRouteWithChildren
   AuthenticatedAdminAuditsRoute: typeof AuthenticatedAdminAuditsRouteWithChildren
   AuthenticatedAdminCompaniesRoute: typeof AuthenticatedAdminCompaniesRouteWithChildren
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
@@ -1036,7 +1090,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminActivityRoute: AuthenticatedAdminActivityRoute,
-  AuthenticatedAdminAssetsRoute: AuthenticatedAdminAssetsRoute,
+  AuthenticatedAdminAssetsRoute: AuthenticatedAdminAssetsRouteWithChildren,
   AuthenticatedAdminAuditsRoute: AuthenticatedAdminAuditsRouteWithChildren,
   AuthenticatedAdminCompaniesRoute:
     AuthenticatedAdminCompaniesRouteWithChildren,

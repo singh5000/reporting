@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, RefreshCw, Recycle, Scale, DollarSign, ChevronRight } from "lucide-react";
+import { Plus, RefreshCw, Recycle, Scale, DollarSign, Pencil, Trash2, Loader2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { apiClient } from "@/lib/api/api-client";
 import { ENDPOINTS } from "@/lib/api/endpoints";
@@ -71,6 +71,10 @@ function WastePage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const { requireTenant } = useTenantGuard();
+  const [editItem, setEditItem] = useState<any>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -129,6 +133,57 @@ function WastePage() {
       toast.error(err?.message ?? "Failed to log waste record");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function openEdit(item: any) {
+    setEditItem(item);
+    setEditForm({
+      type:       item.type ?? "",
+      category:   item.category ?? "NON_HAZARDOUS",
+      quantity:   String(item.quantity ?? ""),
+      unit:       item.unit ?? "KG",
+      disposedAt: item.disposedAt ? item.disposedAt.slice(0, 10) : todayStr(),
+    });
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editItem) return;
+    if (!editForm.quantity || Number(editForm.quantity) <= 0) { toast.error("Valid quantity is required"); return; }
+    setEditSaving(true);
+    try {
+      const disposedAtIso = editForm.disposedAt
+        ? new Date(editForm.disposedAt + "T00:00:00.000Z").toISOString()
+        : new Date().toISOString();
+      await apiClient.patch(ENDPOINTS.waste.update(editItem.id), {
+        type:       editForm.type || undefined,
+        category:   editForm.category || undefined,
+        quantity:   Number(editForm.quantity),
+        unit:       editForm.unit || undefined,
+        disposedAt: disposedAtIso,
+      });
+      toast.success("Waste record updated");
+      setEditItem(null);
+      load();
+    } catch {
+      toast.error("Failed to update waste record");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this waste record? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      await apiClient.delete(ENDPOINTS.waste.remove(id));
+      toast.success("Waste record deleted");
+      load();
+    } catch {
+      toast.error("Failed to delete waste record");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -201,12 +256,12 @@ function WastePage() {
                   <TableHead className="hidden sm:table-cell text-xs">Quantity</TableHead>
                   <TableHead className="hidden lg:table-cell text-xs">Site</TableHead>
                   <TableHead className="hidden sm:table-cell text-xs">Date</TableHead>
-                  <TableHead className="w-8" />
+                  {(can("waste:update") || can("waste:delete")) && <TableHead className="w-24 text-right text-xs">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((item: any) => (
-                  <TableRow key={item.id} className="border-border/60 cursor-pointer hover:bg-muted/30">
+                  <TableRow key={item.id} className="border-border/60 hover:bg-muted/30">
                     <TableCell className="font-medium">{item.type ?? item.description ?? "—"}</TableCell>
                     <TableCell>
                       <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", STATUS_COLOR[item.status] ?? "bg-gray-500/10 text-gray-600")}>
@@ -225,9 +280,26 @@ function WastePage() {
                     <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
                       {new Date(item.disposedAt ?? item.createdAt).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="text-right pr-3">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-                    </TableCell>
+                    {(can("waste:update") || can("waste:delete")) && (
+                      <TableCell className="text-right pr-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {can("waste:update") && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {can("waste:delete") && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(item.id)} disabled={deletingId === item.id}>
+                              {deletingId === item.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Trash2 className="h-3.5 w-3.5" />
+                              }
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -312,6 +384,61 @@ function WastePage() {
               onChange={(e) => setForm((f) => ({ ...f, disposedAt: e.target.value }))}
               required
             />
+          </div>
+        </form>
+      </ModuleDrawer>
+
+      {/* Edit Drawer */}
+      <ModuleDrawer
+        open={!!editItem}
+        onOpenChange={(open) => { if (!open) setEditItem(null); }}
+        title="Edit Waste Record"
+        description="Update waste disposal details"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button form="edit-waste-form" type="submit" disabled={editSaving}
+              className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110">
+              {editSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        }
+      >
+        <form id="edit-waste-form" onSubmit={handleEditSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <Label>Waste Type <span className="text-red-500">*</span></Label>
+            <Input value={editForm.type} onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))} required />
+          </div>
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={editForm.category} onValueChange={(v) => setEditForm((f) => ({ ...f, category: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {WASTE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Quantity <span className="text-red-500">*</span></Label>
+              <Input type="number" step="0.01" min="0.01" value={editForm.quantity}
+                onChange={(e) => setEditForm((f) => ({ ...f, quantity: e.target.value }))} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              <Select value={editForm.unit} onValueChange={(v) => setEditForm((f) => ({ ...f, unit: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {WASTE_UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Disposal Date</Label>
+            <Input type="date" value={editForm.disposedAt}
+              onChange={(e) => setEditForm((f) => ({ ...f, disposedAt: e.target.value }))} />
           </div>
         </form>
       </ModuleDrawer>

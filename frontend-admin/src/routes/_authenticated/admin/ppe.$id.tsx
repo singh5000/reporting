@@ -1,22 +1,25 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft, HardHat, Tag, User, Calendar, AlertTriangle, CheckCircle2, Package,
+  Pencil, Trash2, Loader2,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SurfaceCard } from "@/components/shared/Card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ModuleDrawer } from "@/components/shared/ModuleDrawer";
 import { apiClient } from "@/lib/api/api-client";
 import { ENDPOINTS } from "@/lib/api/endpoints";
+import { usePermissions } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/ppe/$id")({
-  head: () => ({
-    meta: [
-      { title: "PPE Detail · 360CRD" },
-      { name: "description", content: "PPE item details and assignment history." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "PPE Detail · 360CRD" }] }),
   component: PPEDetailPage,
 });
 
@@ -35,6 +38,9 @@ const CONDITION_COLOR: Record<string, string> = {
   DAMAGED:   "bg-red-500/10 text-red-600 border-red-500/20",
 };
 
+const PPE_CATEGORIES = ["HEAD","EYE","EAR","RESPIRATORY","HAND","FOOT","BODY","HIGH_VIS","FALL_PROTECTION","OTHER"];
+const PPE_STATUSES   = ["AVAILABLE","ASSIGNED","MAINTENANCE","DISPOSED"];
+
 function MetaItem({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value?: string | null }) {
   if (!value) return null;
   return (
@@ -52,27 +58,100 @@ function MetaItem({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
 
 function PPEDetailPage() {
   const { id } = Route.useParams();
-  const [item, setItem] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const navigate = useNavigate();
+  const can = usePermissions();
 
-  useEffect(() => {
+  const [item, setItem]         = useState<any>(null);
+  const [loading, setLoading]   = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", category: "", manufacturer: "", model: "", serialNumber: "", status: "" });
+
+  function load() {
+    setLoading(true);
     apiClient
       .get<any>(ENDPOINTS.ppe.detail(id))
-      .then((res) => setItem(res.data))
+      .then((res) => {
+        const d = res.data;
+        setItem(d);
+        setEditForm({
+          name:         d.name ?? "",
+          category:     d.category ?? "HEAD",
+          manufacturer: d.manufacturer ?? "",
+          model:        d.model ?? "",
+          serialNumber: d.serialNumber ?? "",
+          status:       d.status ?? "AVAILABLE",
+        });
+      })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }
+
+  useEffect(() => { load(); }, [id]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await apiClient.patch(ENDPOINTS.ppe.update(id), {
+        name:         editForm.name || undefined,
+        category:     editForm.category || undefined,
+        manufacturer: editForm.manufacturer || undefined,
+        model:        editForm.model || undefined,
+        serialNumber: editForm.serialNumber || undefined,
+        status:       editForm.status || undefined,
+      });
+      toast.success("PPE item updated");
+      setEditOpen(false);
+      load();
+    } catch {
+      toast.error("Failed to update PPE item");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm("Delete this PPE item? This cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(ENDPOINTS.ppe.remove(id));
+      toast.success("PPE item deleted");
+      navigate({ to: "/admin/ppe" });
+    } catch {
+      toast.error("Failed to delete PPE item");
+      setDeleting(false);
+    }
+  }
 
   return (
     <AppShell>
       <div className="mx-auto max-w-[1200px] space-y-6 animate-in fade-in duration-300">
-        <Link
-          to="/admin/ppe"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to PPE inventory
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            to="/admin/ppe"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to PPE inventory
+          </Link>
+          {!loading && item && (
+            <div className="flex items-center gap-2">
+              {can("ppe:update") && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </Button>
+              )}
+              {can("ppe:delete") && (
+                <Button variant="destructive" size="sm" className="gap-1.5" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  Delete
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
 
         {loading ? (
           <div className="space-y-4">
@@ -220,6 +299,65 @@ function PPEDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Drawer */}
+      <ModuleDrawer
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        title="Edit PPE Item"
+        description="Update PPE item details"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button form="edit-ppe-form" type="submit" disabled={saving}
+              className="[background:var(--gradient-primary)] text-primary-foreground hover:brightness-110">
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        }
+      >
+        <form id="edit-ppe-form" onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Name <span className="text-red-500">*</span></Label>
+            <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} required />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={editForm.category} onValueChange={(v) => setEditForm((f) => ({ ...f, category: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PPE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={editForm.status} onValueChange={(v) => setEditForm((f) => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PPE_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Manufacturer</Label>
+            <Input value={editForm.manufacturer} onChange={(e) => setEditForm((f) => ({ ...f, manufacturer: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Model</Label>
+              <Input value={editForm.model} onChange={(e) => setEditForm((f) => ({ ...f, model: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Serial Number</Label>
+              <Input value={editForm.serialNumber} onChange={(e) => setEditForm((f) => ({ ...f, serialNumber: e.target.value }))} />
+            </div>
+          </div>
+        </form>
+      </ModuleDrawer>
     </AppShell>
   );
 }
