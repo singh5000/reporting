@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { authStore } from "@/lib/auth-store";
 import { RefreshCw, FileText, FolderOpen, Download } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { apiClient } from "@/lib/api/api-client";
@@ -16,6 +17,13 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/portal/documents")({
   head: () => ({ meta: [{ title: "Documents · 360CRD" }] }),
+  beforeLoad: () => {
+    if (typeof window === "undefined") return;
+    const perms = authStore.getState().user?.permissions ?? [];
+    if (!perms.includes("document:read") && !perms.includes("*") && !perms.includes("*:*")) {
+      throw redirect({ to: "/portal/dashboard" });
+    }
+  },
   component: DocumentsPage,
 });
 

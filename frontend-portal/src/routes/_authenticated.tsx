@@ -1,5 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { authStore } from "@/lib/auth-store";
+import { useEffect } from "react";
+import { authStore, useAuth } from "@/lib/auth-store";
+import { apiClient } from "@/lib/api/api-client";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ location }) => {
@@ -11,7 +13,6 @@ export const Route = createFileRoute("/_authenticated")({
 
     const role = authStore.getState().user?.role ?? "";
     if (role !== "customer") {
-      // Wrong role for this portal — clear session and redirect to login
       authStore.clear();
       throw redirect({ to: "/login" });
     }
@@ -21,5 +22,24 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/portal/dashboard" });
     }
   },
-  component: () => <Outlet />,
+  component: AuthenticatedLayout,
 });
+
+function AuthenticatedLayout() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    apiClient
+      .get<{ permissions: string[] }>("/auth/me")
+      .then((res: any) => {
+        const perms = res.data?.permissions;
+        if (Array.isArray(perms)) {
+          authStore.updatePermissions(perms);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  return <Outlet />;
+}

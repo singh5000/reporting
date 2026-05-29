@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { authStore } from "@/lib/auth-store";
 import { Plus, RefreshCw, Recycle, Scale, DollarSign, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { apiClient } from "@/lib/api/api-client";
@@ -22,6 +23,13 @@ import { usePermissions } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/_authenticated/app/waste")({
   head: () => ({ meta: [{ title: "Waste · 360CRD" }] }),
+  beforeLoad: () => {
+    if (typeof window === "undefined") return;
+    const perms = authStore.getState().user?.permissions ?? [];
+    if (!perms.includes("waste:read") && !perms.includes("*") && !perms.includes("*:*")) {
+      throw redirect({ to: "/app/dashboard" });
+    }
+  },
   component: WastePage,
 });
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { authStore } from "@/lib/auth-store";
 import { RefreshCw, Archive, Plus, Download, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { apiClient } from "@/lib/api/api-client";
@@ -14,6 +15,13 @@ import { usePermissions } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports · 360CRD" }] }),
+  beforeLoad: () => {
+    if (typeof window === "undefined") return;
+    const perms = authStore.getState().user?.permissions ?? [];
+    if (!perms.includes("report:read") && !perms.includes("*") && !perms.includes("*:*")) {
+      throw redirect({ to: "/app/dashboard" });
+    }
+  },
   component: ReportsPage,
 });
 

@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { authStore } from "@/lib/auth-store";
 import { RefreshCw, Warehouse, MapPin, CheckCircle2, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useFacilityStore } from "@/lib/stores/facility.store";
@@ -18,6 +19,13 @@ export const Route = createFileRoute("/_authenticated/app/sites")({
       { name: "description", content: "Manage operational sites and locations." },
     ],
   }),
+  beforeLoad: () => {
+    if (typeof window === "undefined") return;
+    const perms = authStore.getState().user?.permissions ?? [];
+    if (!perms.includes("site:read") && !perms.includes("*") && !perms.includes("*:*")) {
+      throw redirect({ to: "/app/dashboard" });
+    }
+  },
   component: FacilitiesPage,
 });
 

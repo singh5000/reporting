@@ -1,5 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { authStore } from "@/lib/auth-store";
+import { useEffect } from "react";
+import { authStore, useAuth } from "@/lib/auth-store";
+import { apiClient } from "@/lib/api/api-client";
 
 const APP_ROLES = ["manager", "staff"];
 
@@ -13,7 +15,6 @@ export const Route = createFileRoute("/_authenticated")({
 
     const role = authStore.getState().user?.role ?? "";
     if (!APP_ROLES.includes(role)) {
-      // Wrong role for this portal — clear session and redirect to login
       authStore.clear();
       throw redirect({ to: "/login" });
     }
@@ -23,5 +24,26 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/app/dashboard" });
     }
   },
-  component: () => <Outlet />,
+  component: AuthenticatedLayout,
 });
+
+function AuthenticatedLayout() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    // Refresh permissions from backend so sidebar and route guards always
+    // reflect the latest super-admin settings, not stale login-time data.
+    apiClient
+      .get<{ permissions: string[] }>("/auth/me")
+      .then((res: any) => {
+        const perms = res.data?.permissions;
+        if (Array.isArray(perms)) {
+          authStore.updatePermissions(perms);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  return <Outlet />;
+}

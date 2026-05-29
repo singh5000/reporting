@@ -107,6 +107,12 @@ export const authStore = {
     persist();
   },
 
+  updatePermissions: (permissions: string[]) => {
+    if (!state.user) return;
+    state = { ...state, user: { ...state.user, permissions } };
+    persist();
+  },
+
   clear: () => {
     setAuthToken(null);
     setRefreshToken(null);
